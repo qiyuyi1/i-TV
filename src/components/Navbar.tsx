@@ -52,7 +52,7 @@ export default function Navbar() {
             {session ? (
               <div className="flex items-center gap-3">
                 <span className="text-gray-300 text-sm">
-                  {session.user?.username}
+                  {(session.user as any)?.username}
                 </span>
                 {(session.user as any)?.role === "ADMIN" && (
                   <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded-full border border-amber-500/30">
@@ -136,7 +136,7 @@ export default function Navbar() {
             {session ? (
               <>
                 <div className="text-gray-400 text-sm py-2">
-                  {session.user?.username}
+                  {(session.user as any)?.username}
                   {(session.user as any)?.role === "ADMIN" && (
                     <span className="ml-2 px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded-full">
                       管理员
