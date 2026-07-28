@@ -1,1 +1,0 @@
-const dns = require('dns'); dns.lookup('aws-0-us-east-1.pooler.supabase.com', { all: true, family: 4 }, (err, addrs) => { if(err) console.log('LOOKUP FAIL:', err.code); else addrs.forEach(a => console.log(a.address, a.family)); });
