@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import Providers from "./providers";
 
 export const metadata: Metadata = {
-  title: "影视资源库",
+  title: "i帅TV",
   description: "分享和发现精彩影视资源",
 };
 
