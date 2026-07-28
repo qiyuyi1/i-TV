@@ -15,11 +15,15 @@ model User {
   createdAt DateTime  @default(now())
   resources Resource[]
   links     ResourceLink[]
+
+  @@map("users")
 }
 
 enum Role {
   USER
   ADMIN
+
+  @@map("role_enum")
 }
 
 model Resource {
@@ -43,6 +47,8 @@ model Resource {
   createdById    String?
   createdBy      User?    @relation(fields: [createdById], references: [id])
   links          ResourceLink[]
+
+  @@map("resources")
 }
 
 model ResourceLink {
@@ -55,4 +61,6 @@ model ResourceLink {
   addedById  String?
   addedBy    User?    @relation(fields: [addedById], references: [id])
   createdAt  DateTime @default(now())
+
+  @@map("resource_links")
 }
