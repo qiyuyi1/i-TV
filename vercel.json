@@ -3,4 +3,4 @@
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs"
-}
+}  
