@@ -2,6 +2,7 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BEARER_TOKEN = process.env.TMDB_BEARER_TOKEN;
 const BASE_URL = "https://api.themoviedb.org/3";
 
+
 const headers = {
   Authorization: `Bearer ${TMDB_BEARER_TOKEN}`,
   "Content-Type": "application/json",
@@ -16,9 +17,11 @@ export async function searchTMDB(query: string, type: string = "multi") {
       { headers, cache: "no-cache" }
     );
 
+
     if (!response.ok) {
       throw new Error(`TMDB API error: ${response.status}`);
     }
+
 
     const data = await response.json();
     return data.results || [];
@@ -35,6 +38,7 @@ export async function getTMDBDetails(id: string, type: string = "movie") {
       { headers, cache: "no-cache" }
     );
 
+
     if (!response.ok) {
       throw new Error(`TMDB API error: ${response.status}`);
     }
@@ -46,7 +50,7 @@ export async function getTMDBDetails(id: string, type: string = "movie") {
   }
 }
 
-export function getImageUrl(path: string | null, size: string = "w500") {
-  if (!path) return null;
+export function getImageUrl(path: string | null, size: string = "w500"): string | undefined {
+  if (!path) return undefined;
   return `https://image.tmdb.org/t/p/${size}${path}`;
 }
