@@ -1,0 +1,1 @@
+const dns = require('dns'); dns.lookup('db.wxaemtxkrryparukzdrv.supabase.co', { all: true }, (err, addresses) => { if (err) console.log('FAIL:', err); else addresses.forEach(a => console.log(a.address, a.family)); });

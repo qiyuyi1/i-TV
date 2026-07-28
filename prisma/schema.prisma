@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  username  String    @unique
+  password  String
+  role      Role      @default(USER)
+  createdAt DateTime  @default(now())
+  resources Resource[]
+  links     ResourceLink[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Resource {
+  id             String   @id @default(cuid())
+  tmdbId         String   @unique
+  title          String
+  originalTitle  String?
+  posterPath     String?
+  backdropPath   String?
+  overview      String?
+  year           String?
+  type           String   @default("movie")
+  genres         String?
+  rating         Float?
+  currentEpisode String?
+  totalEpisodes  String?
+  status         String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String?
+  createdBy      User?    @relation(fields: [createdById], references: [id])
+  links          ResourceLink[]
+}
+
+model ResourceLink {
+  id         String   @id @default(cuid())
+  label      String
+  url        String
+  type       String   @default("夸克网盘")
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  addedById  String?
+  addedBy    User?    @relation(fields: [addedById], references: [id])
+  createdAt  DateTime @default(now())
+}
