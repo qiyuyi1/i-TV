@@ -30,27 +30,37 @@ export default function HomePage() {
 
   const fetchResources = async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (filter !== "all") params.append("type", filter);
-    const res = await fetch(`/api/resources?${params}`);
-    const data = await res.json();
-    setResources(data);
+    try {
+      const params = new URLSearchParams();
+      if (filter !== "all") params.append("type", filter);
+      const res = await fetch(`/api/resources?${params}`);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setResources(data);
+      } else {
+        console.error("Failed to fetch resources:", data);
+        setResources([]);
+      }
+    } catch (error) {
+      console.error("Fetch resources error:", error);
+      setResources([]);
+    }
     setLoading(false);
   };
 
-  const filteredResources = resources.filter((r) => {
+  const filteredResources = Array.isArray(resources) ? resources.filter((r) => {
     if (!search) return true;
     return (
       r.title.toLowerCase().includes(search.toLowerCase()) ||
       (r as any).originalTitle?.toLowerCase().includes(search.toLowerCase())
     );
-  });
+  }) : [];
 
   return (
     <div className="pt-20 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">影视资源库</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">i帅TV</h1>
           <p className="text-gray-400">
             发现和分享精彩的电影与剧集资源
           </p>
