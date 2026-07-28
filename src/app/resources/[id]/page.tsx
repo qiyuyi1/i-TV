@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getImageUrl } from "@/lib/tmdb";
+import { getTypeLabel } from "@/lib/resourceTypes";
 
 interface ResourceLink {
   id: string;
@@ -212,7 +213,7 @@ export default function ResourceDetailPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs">
-                      {resource.type === "movie" ? "电影" : "剧集"}
+                      {getTypeLabel(resource.type)}
                     </span>
                     {resource.rating && (
                       <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-xs">

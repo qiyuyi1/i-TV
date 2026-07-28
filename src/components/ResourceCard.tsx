@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { getImageUrl } from "@/lib/tmdb";
+import { getTypeLabel } from "@/lib/resourceTypes";
 
 interface ResourceCardProps {
   resource: {
@@ -19,7 +20,7 @@ interface ResourceCardProps {
 }
 
 export default function ResourceCard({ resource }: ResourceCardProps) {
-  const typeLabel = resource.type === "movie" ? "电影" : "剧集";
+  const typeLabel = getTypeLabel(resource.type);
   const statusColor = {
     更新中: "text-blue-400",
     已完结: "text-green-400",

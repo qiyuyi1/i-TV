@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import ResourceCard from "@/components/ResourceCard";
+import { RESOURCE_TYPES, getTypeLabel } from "@/lib/resourceTypes";
 
 interface Resource {
   id: string;
@@ -62,7 +63,7 @@ export default function HomePage() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">i帅TV</h1>
           <p className="text-gray-400">
-            发现和分享精彩的电影与剧集资源
+            发现和分享精彩的电影、剧集、综艺、纪录片等资源
           </p>
         </div>
 
@@ -90,8 +91,8 @@ export default function HomePage() {
             </svg>
           </div>
 
-          <div className="flex gap-2">
-            {["all", "movie", "tv"].map((type) => (
+          <div className="flex gap-2 flex-wrap">
+            {["all", ...RESOURCE_TYPES.map((t) => t.value)].map((type) => (
               <button
                 key={type}
                 onClick={() => setFilter(type)}
@@ -101,7 +102,7 @@ export default function HomePage() {
                     : "glass text-gray-300 hover:text-white"
                 }`}
               >
-                {type === "all" ? "全部" : type === "movie" ? "电影" : "剧集"}
+                {type === "all" ? "全部" : getTypeLabel(type)}
               </button>
             ))}
           </div>
