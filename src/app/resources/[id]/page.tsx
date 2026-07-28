@@ -237,7 +237,7 @@ export default function ResourceDetailPage() {
 
                 {session && (
                   <div className="flex gap-2">
-                    {session.user?.role === "ADMIN" && (
+                    {(session.user as any)?.role === "ADMIN" && (
                       <button
                         onClick={handleDeleteResource}
                         className="px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors text-sm"

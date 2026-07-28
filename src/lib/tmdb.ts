@@ -46,7 +46,7 @@ export async function getTMDBDetails(id: string, type: string = "movie") {
   }
 }
 
-export function getImageUrl(path: string | null, size: string = "w500") {
-  if (!path) return null;
+export function getImageUrl(path: string | null, size: string = "w500"): string | undefined {
+  if (!path) return undefined;
   return `https://image.tmdb.org/t/p/${size}${path}`;
 }
