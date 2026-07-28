@@ -29,9 +29,9 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">影</span>
+              <span className="text-white font-bold text-sm">i</span>
             </div>
-            <span className="text-xl font-bold text-white">影视资源库</span>
+            <span className="text-xl font-bold text-white">i帅TV</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-4">
