@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface UserInfo {
   id: string;
@@ -13,26 +14,15 @@ interface UserInfo {
 }
 
 export default function AdminPage() {
-  const { data: session } = useSession();
-  const [users, setUsers] = useState<UserInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: session, update: updateSession } = useSession();
+  const router = useRouter();
   const [searchUsername, setSearchUsername] = useState("");
   const [searchResult, setSearchResult] = useState<UserInfo | null>(null);
   const [actionMessage, setActionMessage] = useState("");
+  const [setupToken, setSetupToken] = useState("");
+  const [setupMessage, setSetupMessage] = useState("");
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const res = await fetch("/api/resources");
-      // We'll fetch users differently
-      setLoading(false);
-    } catch {
-      setLoading(false);
-    }
-  };
+  const isAdmin = session && (session.user as any)?.role === "ADMIN";
 
   const handleSearchUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +55,6 @@ export default function AdminPage() {
       if (res.ok) {
         const data = await res.json();
         setActionMessage(`✅ ${data.message}`);
-        // Refresh search result
         setSearchResult((prev) =>
           prev ? { ...prev, role: newRole } : null
         );
@@ -78,26 +67,129 @@ export default function AdminPage() {
     }
   };
 
-  if (!session || (session.user as any)?.role !== "ADMIN") {
+  const handleFirstAdminSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!setupToken.trim()) {
+      setSetupMessage("请输入令牌");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: setupToken.trim() }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSetupMessage(`✅ ${data.message}，正在刷新...`);
+        await updateSession();
+        setTimeout(() => router.refresh(), 1500);
+      } else {
+        const data = await res.json();
+        setSetupMessage(`❌ ${data.error || "设置失败"}`);
+      }
+    } catch {
+      setSetupMessage("❌ 网络请求失败");
+    }
+  };
+
+  // Not logged in
+  if (!session) {
     return (
       <div className="pt-20 min-h-screen flex items-center justify-center">
         <div className="text-center glass rounded-2xl p-8 max-w-md">
-          <div className="text-6xl mb-4">🔒</div>
-          <h1 className="text-2xl text-white mb-2">权限不足</h1>
-          <p className="text-gray-400 mb-4">
-            此页面仅管理员可访问
-          </p>
+          <div className="text-6xl mb-4">🔐</div>
+          <h1 className="text-2xl text-white mb-2">请先登录</h1>
+          <p className="text-gray-400 mb-4">登录后可申请成为首个管理员</p>
           <Link
-            href="/"
-            className="text-blue-400 hover:text-blue-300 transition-colors"
+            href="/login"
+            className="inline-block px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
-            返回首页
+            前往登录
           </Link>
         </div>
       </div>
     );
   }
 
+  // Logged in but not admin - show first admin setup
+  if (!isAdmin) {
+    return (
+      <div className="pt-20 min-h-screen">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">管理员设置</h1>
+            <p className="text-gray-400">
+              当前账户：{(session.user as any)?.username}（普通用户）
+            </p>
+          </div>
+
+          <div className="glass rounded-2xl p-6 mb-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="text-2xl">⚡</div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">
+                  首个管理员设置
+                </h2>
+                <p className="text-gray-400 text-sm">
+                  如果系统尚无管理员，你可以使用安全令牌将当前账户升级为管理员
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleFirstAdminSetup} className="space-y-4">
+              <div>
+                <label className="block text-gray-300 text-sm mb-2">
+                  安全令牌 (NEXTAUTH_SECRET)
+                </label>
+                <input
+                  type="password"
+                  value={setupToken}
+                  onChange={(e) => setSetupToken(e.target.value)}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="输入 NEXTAUTH_SECRET 的值"
+                />
+                <p className="text-gray-500 text-xs mt-1">
+                  此令牌可在 Vercel 项目 → Settings → Environment Variables 中查看
+                </p>
+              </div>
+
+              {setupMessage && (
+                <div className={`p-3 rounded-lg text-sm ${
+                  setupMessage.startsWith("✅")
+                    ? "bg-green-500/10 text-green-400"
+                    : "bg-red-500/10 text-red-400"
+                }`}>
+                  {setupMessage}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors"
+              >
+                升级为管理员
+              </button>
+            </form>
+          </div>
+
+          <div className="glass rounded-2xl p-6">
+            <h3 className="text-white font-medium mb-2">💡 获取令牌方法</h3>
+            <ol className="text-gray-400 text-sm space-y-2 list-decimal list-inside">
+              <li>登录 Vercel → 进入 i-TV 项目</li>
+              <li>点击顶部 Settings → 左侧 Environment Variables</li>
+              <li>找到 <code className="text-amber-400">NEXTAUTH_SECRET</code>，点击眼睛图标显示值</li>
+              <li>复制该值并粘贴到上方输入框</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Admin dashboard
   return (
     <div className="pt-20 pb-16 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
