@@ -58,6 +58,8 @@ export async function PATCH(
       notes,
       overview,
       title,
+      posterPath,
+      backdropPath,
     } = body;
 
     const updateData: any = {};
@@ -68,6 +70,8 @@ export async function PATCH(
     if (notes !== undefined) updateData.notes = notes;
     if (overview !== undefined) updateData.overview = overview;
     if (title !== undefined) updateData.title = title;
+    if (posterPath !== undefined) updateData.posterPath = posterPath || null;
+    if (backdropPath !== undefined) updateData.backdropPath = backdropPath || null;
 
     const resource = await prisma.resource.update({
       where: { id: params.id },
@@ -95,7 +99,26 @@ export async function DELETE(
       return NextResponse.json({ error: "请先登录" }, { status: 401 });
     }
 
-    const resource = await prisma.resource.delete({
+    const resource = await prisma.resource.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!resource) {
+      return NextResponse.json({ error: "资源不存在" }, { status: 404 });
+    }
+
+    const userRole = (session.user as any)?.role;
+    const userId = (session.user as any)?.id;
+
+    // Allow deletion if user is the creator or an admin
+    if (resource.createdById !== userId && userRole !== "ADMIN") {
+      return NextResponse.json(
+        { error: "无权删除此资源" },
+        { status: 403 }
+      );
+    }
+
+    await prisma.resource.delete({
       where: { id: params.id },
     });
 

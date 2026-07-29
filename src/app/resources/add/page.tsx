@@ -107,15 +107,18 @@ export default function AddResourcePage() {
       if (res.ok && Array.isArray(data)) {
         // 如果搜索类型有指定 genre，优先过滤匹配的结果
         const typeInfo = getResourceType(searchType);
-        let filtered = data;
+        let filtered = data.filter(
+          (item: TMDBResult) => item.media_type !== "person"
+        );
         if (typeInfo?.tmdbGenreId) {
-          filtered = data.filter(
+          const genreFiltered = filtered.filter(
             (item: TMDBResult) =>
-              item.genre_ids?.includes(typeInfo.tmdbGenreId!) ||
-              (item.media_type === searchType)
+              item.genre_ids?.includes(typeInfo.tmdbGenreId!)
           );
-          // 如果过滤后没结果，就用原始结果
-          if (filtered.length === 0) filtered = data;
+          // 如果按 genre 过滤后有结果，使用过滤后的；否则使用原始结果
+          if (genreFiltered.length > 0) {
+            filtered = genreFiltered;
+          }
         }
         setResults(filtered);
         setFinalType(searchType);

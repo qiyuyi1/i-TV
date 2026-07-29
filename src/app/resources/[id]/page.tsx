@@ -56,6 +56,10 @@ export default function ResourceDetailPage() {
     totalEpisodes: "",
     status: "",
     notes: "",
+    title: "",
+    overview: "",
+    posterPath: "",
+    backdropPath: "",
   });
 
   useEffect(() => {
@@ -71,6 +75,10 @@ export default function ResourceDetailPage() {
       totalEpisodes: data.totalEpisodes || "",
       status: data.status || "",
       notes: data.notes || "",
+      title: data.title || "",
+      overview: data.overview || "",
+      posterPath: data.posterPath || "",
+      backdropPath: data.backdropPath || "",
     });
     setLoading(false);
   };
@@ -238,14 +246,12 @@ export default function ResourceDetailPage() {
 
                 {session && (
                   <div className="flex gap-2">
-                    {(session.user as any)?.role === "ADMIN" && (
-                      <button
-                        onClick={handleDeleteResource}
-                        className="px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors text-sm"
-                      >
-                        删除
-                      </button>
-                    )}
+                    <button
+                      onClick={handleDeleteResource}
+                      className="px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors text-sm"
+                    >
+                      删除
+                    </button>
                   </div>
                 )}
               </div>
@@ -348,6 +354,20 @@ export default function ResourceDetailPage() {
           <div className="mt-6 glass rounded-2xl p-6">
             <h3 className="text-white font-semibold mb-4">编辑资源信息</h3>
             <form onSubmit={handleUpdateInfo} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-gray-300 text-sm mb-2">
+                  标题
+                </label>
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, title: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="资源标题"
+                />
+              </div>
               <div>
                 <label className="block text-gray-300 text-sm mb-2">
                   当前集数
@@ -394,6 +414,58 @@ export default function ResourceDetailPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-2">
+                  海报路径 (TMDB poster_path 或完整 URL)
+                </label>
+                <input
+                  type="text"
+                  value={editForm.posterPath}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, posterPath: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="/abc123.jpg 或 https://..."
+                />
+                {editForm.posterPath && (
+                  <div className="mt-2">
+                    <img
+                      src={getImageUrl(editForm.posterPath, "w185")}
+                      alt="海报预览"
+                      className="w-24 h-36 object-cover rounded-lg border border-white/10"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-gray-300 text-sm mb-2">
+                  背景图路径 (TMDB backdrop_path 或完整 URL)
+                </label>
+                <input
+                  type="text"
+                  value={editForm.backdropPath}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, backdropPath: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="/abc123.jpg 或 https://..."
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-gray-300 text-sm mb-2">剧情简介</label>
+                <textarea
+                  value={editForm.overview}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, overview: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  rows={3}
+                  placeholder="更新剧情简介..."
+                />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-gray-300 text-sm mb-2">备注</label>
