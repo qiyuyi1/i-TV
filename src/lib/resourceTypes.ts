@@ -27,14 +27,14 @@ export const RESOURCE_TYPES: ResourceType[] = [
     label: "电影",
     tmdbSearchType: "movie",
     tmdbDetailType: "movie",
-    allowManualCreate: false,
+    allowManualCreate: true,
   },
   {
     value: "tv",
     label: "电视剧",
     tmdbSearchType: "tv",
     tmdbDetailType: "tv",
-    allowManualCreate: false,
+    allowManualCreate: true,
   },
   {
     value: "tokusatsu",

@@ -16,10 +16,11 @@ export async function GET(request: Request) {
 
     const results = await searchTMDB(query, type);
     return NextResponse.json(results);
-  } catch (error) {
+  } catch (error: any) {
     console.error("TMDB search API error:", error);
+    const message = error?.message || "TMDB搜索失败，请稍后重试";
     return NextResponse.json(
-      { error: "TMDB搜索失败" },
+      { error: message },
       { status: 500 }
     );
   }

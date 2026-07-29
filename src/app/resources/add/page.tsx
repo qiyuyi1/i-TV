@@ -54,6 +54,7 @@ export default function AddResourcePage() {
   const [selectedItem, setSelectedItem] = useState<TMDBDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
   // 手动创建表单状态（用于独家制作等）
   const [manualMode, setManualMode] = useState(false);
@@ -78,11 +79,12 @@ export default function AddResourcePage() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 独家制作不搜索，直接进入手动创建
-    if (searchType === "exclusive") {
+    // 如果选择了不通过 TMDB 搜索的类型，直接进入手动创建
+    if (searchType === "exclusive" || !currentSearchTypeInfo?.tmdbSearchType) {
       setManualMode(true);
       setResults([]);
-      setFinalType("exclusive");
+      setSearchError("");
+      setFinalType(searchType);
       return;
     }
 
@@ -90,6 +92,7 @@ export default function AddResourcePage() {
 
     setLoading(true);
     setResults([]);
+    setSearchError("");
     setManualMode(false);
 
     const tmdbSearchType = getTMDBSearchType(searchType);
@@ -101,7 +104,7 @@ export default function AddResourcePage() {
         )}&type=${tmdbSearchType}`
       );
       const data = await res.json();
-      if (Array.isArray(data)) {
+      if (res.ok && Array.isArray(data)) {
         // 如果搜索类型有指定 genre，优先过滤匹配的结果
         const typeInfo = getResourceType(searchType);
         let filtered = data;
@@ -118,10 +121,12 @@ export default function AddResourcePage() {
         setFinalType(searchType);
       } else {
         setResults([]);
+        setSearchError(data.error || "搜索失败，未找到相关结果");
       }
     } catch (err) {
       console.error("Search failed:", err);
       setResults([]);
+      setSearchError("网络请求失败，请稍后重试");
     }
 
     setLoading(false);
@@ -255,6 +260,7 @@ export default function AddResourcePage() {
     setSelectedItem(null);
     setManualMode(false);
     setResults([]);
+    setSearchError("");
     setManualForm({
       title: "",
       originalTitle: "",
@@ -294,7 +300,7 @@ export default function AddResourcePage() {
           </Link>
           <h1 className="text-3xl font-bold text-white mb-2">添加影视资源</h1>
           <p className="text-gray-400">
-            从 TMDB 搜索并添加你想要分享的影视资源，或手动创建独家制作内容
+            从 TMDB 搜索并添加，或直接手动创建任意类型的资源
           </p>
         </div>
 
@@ -308,11 +314,11 @@ export default function AddResourcePage() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder={
-                      searchType === "exclusive"
-                        ? "点击下方按钮创建独家制作内容"
+                      !currentSearchTypeInfo?.tmdbSearchType
+                        ? "选择类型后点击手动创建"
                         : "输入影片或剧集名称搜索..."
                     }
-                    disabled={searchType === "exclusive"}
+                    disabled={!currentSearchTypeInfo?.tmdbSearchType}
                     className="w-full px-4 py-3 pl-12 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-60"
                   />
                   <svg
@@ -335,6 +341,7 @@ export default function AddResourcePage() {
                   onChange={(e) => {
                     setSearchType(e.target.value);
                     setResults([]);
+                    setSearchError("");
                     setManualMode(false);
                   }}
                   className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
@@ -357,13 +364,49 @@ export default function AddResourcePage() {
                     ? "搜索中..."
                     : "搜索"}
                 </button>
-              </div>
-              {searchType !== "exclusive" &&
-                currentSearchTypeInfo?.allowManualCreate && (
-                  <p className="mt-3 text-gray-500 text-sm">
-                    提示：如果在 TMDB 中搜索不到，可以先搜索任意结果，然后在详情页修改类型并保存。
-                  </p>
+
+                {searchType !== "exclusive" && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setManualMode(true);
+                      setResults([]);
+                      setSearchError("");
+                      setFinalType(searchType);
+                    }}
+                    className="px-6 py-3 glass glass-hover text-white rounded-xl font-medium transition-colors"
+                  >
+                    手动创建
+                  </button>
                 )}
+              </div>
+
+              {searchError && (
+                <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center justify-between">
+                  <div className="text-red-400 text-sm">
+                    <span className="font-medium">搜索提示：</span>
+                    {searchError}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setManualMode(true);
+                      setResults([]);
+                      setSearchError("");
+                      setFinalType(searchType);
+                    }}
+                    className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm transition-colors"
+                  >
+                    切换到手动创建 →
+                  </button>
+                </div>
+              )}
+
+              <p className="mt-3 text-gray-500 text-sm">
+                提示：如果 TMDB 搜索不到结果，或搜索服务暂时不可用，可以直接点击"手动创建"按钮来添加资源。
+              </p>
             </form>
 
             {results.length > 0 && (

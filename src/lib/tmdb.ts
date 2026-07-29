@@ -2,26 +2,57 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BEARER_TOKEN = process.env.TMDB_BEARER_TOKEN;
 const BASE_URL = "https://api.themoviedb.org/3";
 
+async function fetchTMDB(url: string, options?: RequestInit) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
 
-const headers = {
-  Authorization: `Bearer ${TMDB_BEARER_TOKEN}`,
-  "Content-Type": "application/json",
-};
+  // 优先使用 Bearer Token
+  if (TMDB_BEARER_TOKEN) {
+    headers["Authorization"] = `Bearer ${TMDB_BEARER_TOKEN}`;
+  }
+
+  let response = await fetch(url, {
+    ...options,
+    headers: { ...headers, ...(options?.headers || {}) },
+    cache: "no-cache",
+  });
+
+  // 如果 Bearer Token 失败（401/403），尝试用 v3 API Key 作为查询参数
+  if ((response.status === 401 || response.status === 403) && TMDB_API_KEY) {
+    console.warn(
+      "TMDB Bearer Token 认证失败，尝试使用 v3 API Key..."
+    );
+    const urlWithKey = url.includes("?")
+      ? `${url}&api_key=${TMDB_API_KEY}`
+      : `${url}?api_key=${TMDB_API_KEY}`;
+    response = await fetch(urlWithKey, {
+      ...options,
+      headers: { "Content-Type": "application/json" },
+      cache: "no-cache",
+    });
+  }
+
+  return response;
+}
 
 export async function searchTMDB(query: string, type: string = "multi") {
   try {
-    const response = await fetch(
-      `${BASE_URL}/search/${type}?query=${encodeURIComponent(
-        query
-      )}&language=zh-CN&include_adult=false&page=1`,
-      { headers, cache: "no-cache" }
-    );
+    const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(
+      query
+    )}&language=zh-CN&include_adult=false&page=1`;
 
+    const response = await fetchTMDB(url);
 
     if (!response.ok) {
-      throw new Error(`TMDB API error: ${response.status}`);
+      const body = await response.text().catch(() => "");
+      console.error(
+        `TMDB search error: status=${response.status}, body=${body}`
+      );
+      throw new Error(
+        `TMDB 搜索失败 (状态码: ${response.status})。请检查 TMDB API 凭证是否正确。`
+      );
     }
-
 
     const data = await response.json();
     return data.results || [];
@@ -33,14 +64,18 @@ export async function searchTMDB(query: string, type: string = "multi") {
 
 export async function getTMDBDetails(id: string, type: string = "movie") {
   try {
-    const response = await fetch(
-      `${BASE_URL}/${type}/${id}?language=zh-CN&append_to_response=genres,credits`,
-      { headers, cache: "no-cache" }
-    );
+    const url = `${BASE_URL}/${type}/${id}?language=zh-CN&append_to_response=genres,credits`;
 
+    const response = await fetchTMDB(url);
 
     if (!response.ok) {
-      throw new Error(`TMDB API error: ${response.status}`);
+      const body = await response.text().catch(() => "");
+      console.error(
+        `TMDB details error: status=${response.status}, body=${body}`
+      );
+      throw new Error(
+        `TMDB 详情获取失败 (状态码: ${response.status})`
+      );
     }
 
     return await response.json();
