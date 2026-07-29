@@ -200,20 +200,18 @@ export default function ResourceDetailPage() {
 
         <div className="glass rounded-2xl overflow-hidden">
           <div className="md:flex">
-            <div className="md:w-64 flex-shrink-0">
-              <div className="md:aspect-auto md:h-full">
-                {resource.posterPath ? (
-                  <img
-                    src={getImageUrl(resource.posterPath, "w500")}
-                    alt={resource.title}
-                    className="w-full h-full object-contain"
-                  />
+            <div className="md:w-64 flex-shrink-0 md:sticky md:top-20 self-start">
+              {resource.posterPath ? (
+                <img
+                  src={getImageUrl(resource.posterPath, "w500")}
+                  alt={resource.title}
+                  className="w-full h-auto object-contain block"
+                />
                 ) : (
-                  <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                  <div className="w-full aspect-[2/3] bg-gray-800 flex items-center justify-center">
                     <span className="text-6xl">🎬</span>
                   </div>
                 )}
-              </div>
             </div>
 
             <div className="flex-1 p-6 md:p-8">
