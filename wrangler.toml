@@ -3,6 +3,11 @@ main = ".open-next/worker.js"
 compatibility_date = "2025-07-29"
 compatibility_flags = ["nodejs_compat"]
 
+[vars]
+DATABASE_URL = "postgresql://postgres:kpeskSvkziU43W2d@db.wxaemtxkrryparukzdrv.supabase.co:5432/postgres?schema=public&sslmode=require"
+NEXTAUTH_SECRET = "ff62135641b6435fffdd9ed83580070b425ee277e352b679bf8048f32e50f9d5"
+NEXTAUTH_URL = "http://localhost:3000"
+
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
