@@ -1,37 +1,20 @@
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
-const TMDB_BEARER_TOKEN = process.env.TMDB_BEARER_TOKEN;
 const BASE_URL = "https://api.themoviedb.org/3";
 
 async function fetchTMDB(url: string, options?: RequestInit) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+  // 直接使用 v3 API Key 作为查询参数（最稳定可靠）
+  const urlWithKey = url.includes("?")
+    ? `${url}&api_key=${TMDB_API_KEY}`
+    : `${url}?api_key=${TMDB_API_KEY}`;
 
-  // 优先使用 Bearer Token
-  if (TMDB_BEARER_TOKEN) {
-    headers["Authorization"] = `Bearer ${TMDB_BEARER_TOKEN}`;
-  }
-
-  let response = await fetch(url, {
+  const response = await fetch(urlWithKey, {
     ...options,
-    headers: { ...headers, ...(options?.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(options?.headers || {}),
+    },
     cache: "no-cache",
   });
-
-  // 如果 Bearer Token 失败（401/403），尝试用 v3 API Key 作为查询参数
-  if ((response.status === 401 || response.status === 403) && TMDB_API_KEY) {
-    console.warn(
-      "TMDB Bearer Token 认证失败，尝试使用 v3 API Key..."
-    );
-    const urlWithKey = url.includes("?")
-      ? `${url}&api_key=${TMDB_API_KEY}`
-      : `${url}?api_key=${TMDB_API_KEY}`;
-    response = await fetch(urlWithKey, {
-      ...options,
-      headers: { "Content-Type": "application/json" },
-      cache: "no-cache",
-    });
-  }
 
   return response;
 }
