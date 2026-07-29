@@ -1,8 +1,9 @@
-// Postinstall script: make Prisma use the edge runtime everywhere
-// 1) Redirects @prisma/client -> .prisma/client/edge
-// 2) Shims @prisma/client/runtime/library.js -> edge.js + safe stubs
-// 3) Patches .prisma/client/edge.js config to force engineType=wasm
-//    (the generated config incorrectly has engineType=library)
+// Postinstall script: make Prisma Client 5.22 compatible with Cloudflare Workers
+// - Redirects @prisma/client imports -> .prisma/client/edge.js (generated edge entry)
+// - Shims runtime/library.js -> runtime/edge.js + safe stubs (warnEnvConflicts)
+// - Patches runtime/edge.js engine-type validator to NOT throw
+//   "Invalid client engine type, please use `library` or `binary`" when using the
+//   WASM / edge runtime entry point.
 const fs = require("fs");
 const path = require("path");
 
@@ -18,8 +19,28 @@ function shimFile(target, content, label) {
   }
 }
 
+function patchFile(target, transformer, label) {
+  try {
+    if (!fs.existsSync(target)) {
+      console.warn(`[prisma-shim] Skip ${label}: ${target} not found`);
+      return;
+    }
+    const before = fs.readFileSync(target, "utf8");
+    const after = transformer(before);
+    if (after !== before) {
+      fs.writeFileSync(target, after, "utf8");
+      console.log(`[prisma-shim] ${label}`);
+    } else {
+      console.log(`[prisma-shim] ${label} (already applied / no-op)`);
+    }
+  } catch (err) {
+    console.error(`[prisma-shim] Failed to ${label}:`, err.message);
+    process.exitCode = 1;
+  }
+}
+
 // ---------------------------------------------------------------------------
-// 1) @prisma/client -> .prisma/client/edge (default, index)
+// 1) @prisma/client/index.js and default.js -> .prisma/client/edge
 // ---------------------------------------------------------------------------
 const prismaClientDir = path.join(
   __dirname,
@@ -44,7 +65,7 @@ module.exports = { ...require('.prisma/client/edge') };
 );
 
 // ---------------------------------------------------------------------------
-// 2) @prisma/client/runtime/library.js -> edge.js + warnEnvConflicts stub
+// 2) Runtime library.js -> edge.js + warnEnvConflicts stub
 // ---------------------------------------------------------------------------
 const runtimeDir = path.join(prismaClientDir, "runtime");
 const libraryPath = path.join(runtimeDir, "library.js");
@@ -68,10 +89,46 @@ exports.warnEnvConflicts = warnEnvConflicts;
 }
 
 // ---------------------------------------------------------------------------
-// 3) Patch .prisma/client/edge.js config: engineType "library" -> "wasm"
-//    Prisma edge runtime rejects engineType=library with
-//    "Invalid client engine type, please use `library` or `binary`"
-//    Edge runtime actually wants engineType wasm (or uses internal default)
+// 3) Patch @prisma/client/runtime/edge.js engine type validator.
+//    The variable `Gi="library"` + functions `Rt`/`ol` reject anything other
+//    than "library"|"binary", but the generated edge config often ends up as
+//    "wasm" so we just force Rt() to always return "library" and strip the
+//    exception path from ol() as well.
+// ---------------------------------------------------------------------------
+patchFile(
+  edgeRuntimePath,
+  (content) => {
+    // 1) Patch ol() — always return "library" (so Rt takes the t|| branch)
+    content = content.replace(
+      /function ol\(\)\{let e=y\.env\.PRISMA_CLIENT_ENGINE_TYPE;return e==="library"\?"library":e==="binary"\?"binary":void 0\}/g,
+      `function ol(){return "library"}`
+    );
+    // 2) If the above pattern somehow doesn't match, also short-circuit Rt()
+    //    — make it unconditionally return "library" without the ternary check
+    content = content.replace(
+      /function Rt\(e\)\{let t=ol\(\);return t\|\|\(e\?\.config\.engineType==="library"\?"library":e\?\.config\.engineType==="binary"\?"binary":Gi\)\}/g,
+      `function Rt(_e){return "library"}`
+    );
+    // 3) Defensive: also patch the validator inside `getPrismaClient` if the
+    //    runtime has a secondary check like:
+    //      if(t!=="library"&&t!=="binary")throw...
+    content = content.replace(
+      /Invalid client engine type, please use `library` or `binary`/g,
+      `Invalid client engine type (suppressed — falling back to library)`
+    );
+    content = content.replace(
+      /throw new Error\("Invalid client engine type, please use [^)]+\)\)/g,
+      `/* prisma-shim: suppressed engine type throw */ t = "library";`
+    );
+    return content;
+  },
+  "Patched runtime/edge.js engine-type validator (no-op)"
+);
+
+// ---------------------------------------------------------------------------
+// 4) Generated .prisma/client/edge.js: engineType "library" is now fine
+//    (the runtime validator always accepts it).  We make an optional patch so
+//    it reads back as "library" explicitly in case it was written as "wasm".
 // ---------------------------------------------------------------------------
 const generatedEdge = path.join(
   __dirname,
@@ -81,27 +138,12 @@ const generatedEdge = path.join(
   "client",
   "edge.js"
 );
-if (fs.existsSync(generatedEdge)) {
-  let content = fs.readFileSync(generatedEdge, "utf8");
-  const matches = content.match(/"engineType"\s*:\s*"library"/g) || [];
-  if (matches.length) {
-    content = content.replace(/"engineType"\s*:\s*"library"/g, '"engineType":"wasm"');
-    try {
-      fs.writeFileSync(generatedEdge, content, "utf8");
-      console.log(
-        `[prisma-shim] Patched .prisma/client/edge.js: replaced ${matches.length} engineType=library -> wasm`
-      );
-    } catch (err) {
-      console.error("[prisma-shim] Failed to patch generated edge.js:", err.message);
-      process.exitCode = 1;
-    }
-  } else {
-    console.log(
-      "[prisma-shim] No engineType=library found in .prisma/client/edge.js (skipping)"
-    );
-  }
-} else {
-  console.warn(
-    "[prisma-shim] .prisma/client/edge.js not found; skipping engineType patch"
-  );
-}
+patchFile(
+  generatedEdge,
+  (content) =>
+    content.replace(
+      /"engineType"\s*:\s*"wasm"/g,
+      '"engineType":"library"'
+    ),
+  "Normalized generated edge.js engineType to library"
+);
