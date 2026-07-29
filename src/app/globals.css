@@ -15,6 +15,11 @@ body {
 }
 
 @layer utilities {
+  select option {
+    background-color: #111827;
+    color: #ffffff;
+  }
+
   .glass {
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(20px);
