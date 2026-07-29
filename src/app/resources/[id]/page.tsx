@@ -199,8 +199,8 @@ export default function ResourceDetailPage() {
         </div>
 
         <div className="glass rounded-2xl">
-          <div className="md:flex">
-            <div className="md:w-64 flex-shrink-0 md:sticky md:top-20 self-start">
+          <div className="md:flex md:items-start">
+            <div className="md:w-64 flex-shrink-0 md:sticky md:top-20">
               {resource.posterPath ? (
                 <img
                   src={getImageUrl(resource.posterPath, "w500")}
