@@ -41,6 +41,14 @@ export default function Navbar() {
             >
               首页
             </Link>
+            {session && (session.user as any)?.role === "ADMIN" && (
+              <Link
+                href="/admin"
+                className="text-amber-400 hover:text-amber-300 transition-colors"
+              >
+                管理后台
+              </Link>
+            )}
             {session && (
               <Link
                 href="/resources/add"

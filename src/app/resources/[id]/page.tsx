@@ -417,7 +417,7 @@ export default function ResourceDetailPage() {
               </div>
               <div>
                 <label className="block text-gray-300 text-sm mb-2">
-                  海报路径 (TMDB poster_path 或完整 URL)
+                  海报路径
                 </label>
                 <input
                   type="text"
@@ -426,8 +426,12 @@ export default function ResourceDetailPage() {
                     setEditForm({ ...editForm, posterPath: e.target.value })
                   }
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  placeholder="/abc123.jpg 或 https://..."
+                  placeholder="支持 TMDB 路径 /abc123.jpg 或图片URL"
                 />
+                <p className="text-gray-500 text-xs mt-1">
+                  TMDB: 打开 TMDB 影片页 → F12 → 复制海报 img 的 src 后半段 (如 /abc123.jpg)；
+                  或直接粘贴任意图片 URL
+                </p>
                 {editForm.posterPath && (
                   <div className="mt-2">
                     <img
@@ -443,7 +447,7 @@ export default function ResourceDetailPage() {
               </div>
               <div className="md:col-span-2">
                 <label className="block text-gray-300 text-sm mb-2">
-                  背景图路径 (TMDB backdrop_path 或完整 URL)
+                  背景图路径
                 </label>
                 <input
                   type="text"
@@ -452,8 +456,11 @@ export default function ResourceDetailPage() {
                     setEditForm({ ...editForm, backdropPath: e.target.value })
                   }
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  placeholder="/abc123.jpg 或 https://..."
+                  placeholder="支持 TMDB 路径 /abc123.jpg 或图片URL"
                 />
+                <p className="text-gray-500 text-xs mt-1">
+                  用于详情页顶部的模糊背景效果，可选
+                </p>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-gray-300 text-sm mb-2">剧情简介</label>

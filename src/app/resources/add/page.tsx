@@ -105,21 +105,30 @@ export default function AddResourcePage() {
       );
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
-        // 如果搜索类型有指定 genre，优先过滤匹配的结果
         const typeInfo = getResourceType(searchType);
+        // Remove person results (not useful for resources)
         let filtered = data.filter(
           (item: TMDBResult) => item.media_type !== "person"
         );
+
+        // Apply genre filter only if it returns enough results
         if (typeInfo?.tmdbGenreId) {
           const genreFiltered = filtered.filter(
             (item: TMDBResult) =>
               item.genre_ids?.includes(typeInfo.tmdbGenreId!)
           );
-          // 如果按 genre 过滤后有结果，使用过滤后的；否则使用原始结果
-          if (genreFiltered.length > 0) {
+          // Only use genre-filtered results if we have a reasonable number
+          if (genreFiltered.length >= 2) {
             filtered = genreFiltered;
           }
+          // Otherwise keep all results (better than showing nothing)
         }
+
+        // Limit to 20 results for better UX
+        if (filtered.length > 20) {
+          filtered = filtered.slice(0, 20);
+        }
+
         setResults(filtered);
         setFinalType(searchType);
       } else {
@@ -626,7 +635,7 @@ export default function AddResourcePage() {
                         </div>
                         <div className="md:col-span-2">
                           <label className="block text-gray-300 text-sm mb-1">
-                            海报图片 URL
+                            海报图片
                           </label>
                           <input
                             type="text"
@@ -638,8 +647,23 @@ export default function AddResourcePage() {
                               })
                             }
                             className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                            placeholder="https://.../poster.jpg"
+                            placeholder="支持 TMDB 路径 /abc123.jpg 或图片URL"
                           />
+                          <p className="text-gray-500 text-xs mt-1">
+                            TMDB: 打开影片页 → F12 → 复制海报路径 (如 /abc123.jpg)；或粘贴任意图片 URL
+                          </p>
+                          {manualForm.posterPath && (
+                            <div className="mt-2">
+                              <img
+                                src={getImageUrl(manualForm.posterPath, "w185")}
+                                alt="海报预览"
+                                className="w-24 h-36 object-cover rounded-lg border border-white/10"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
                         <div className="md:col-span-2">
                           <label className="block text-gray-300 text-sm mb-1">
