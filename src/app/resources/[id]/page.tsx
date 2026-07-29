@@ -205,7 +205,7 @@ export default function ResourceDetailPage() {
                 <img
                   src={getImageUrl(resource.posterPath, "w500")}
                   alt={resource.title}
-                  className="w-full h-auto object-contain block rounded-t-2xl md:rounded-l-2xl"
+                  className="w-full max-h-[70vh] md:max-h-[calc(100vh-10rem)] object-contain block rounded-t-2xl md:rounded-l-2xl"
                 />
                 ) : (
                   <div className="w-full aspect-[2/3] bg-gray-800 flex items-center justify-center">
