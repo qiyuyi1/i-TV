@@ -8,13 +8,19 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  username  String    @unique
-  password  String
-  role      Role      @default(USER)
-  createdAt DateTime  @default(now())
-  resources Resource[]
-  links     ResourceLink[]
+  id          String    @id @default(cuid())
+  username    String    @unique
+  password    String
+  role        Role      @default(USER)
+  level       Int       @default(1)
+  experience  Int       @default(0)
+  title       String?
+  isOwner     Boolean   @default(false)
+  isSuperAdmin Boolean  @default(false)
+  createdAt   DateTime  @default(now())
+  resources   Resource[]
+  links       ResourceLink[]
+  comments    Comment[]
 
   @@map("users")
 }
@@ -47,6 +53,7 @@ model Resource {
   createdById    String?
   createdBy      User?    @relation(fields: [createdById], references: [id])
   links          ResourceLink[]
+  comments       Comment[]
 
   @@map("resources")
 }
@@ -55,7 +62,8 @@ model ResourceLink {
   id         String   @id @default(cuid())
   label      String
   url        String
-  type       String   @default("夸克网盘")
+  type       String   @default("夸克")
+  quality    String   @default("普通")
   resourceId String
   resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
   addedById  String?
@@ -63,4 +71,17 @@ model ResourceLink {
   createdAt  DateTime @default(now())
 
   @@map("resource_links")
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  content    String
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  isPinned   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@map("comments")
 }

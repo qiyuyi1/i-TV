@@ -14,7 +14,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { token } = body;
 
-    // Simple security: require a token that matches NEXTAUTH_SECRET
     const expectedToken = process.env.NEXTAUTH_SECRET;
     if (!token || token !== expectedToken) {
       return NextResponse.json(
@@ -28,21 +27,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "用户信息无效" }, { status: 400 });
     }
 
+    // Check if an owner already exists
+    const existingOwner = await prisma.user.findFirst({
+      where: { isOwner: true },
+    });
+
+    if (existingOwner) {
+      return NextResponse.json(
+        { error: "系统已有站长" },
+        { status: 400 }
+      );
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { role: "ADMIN" },
-      select: { id: true, username: true, role: true },
+      data: {
+        role: "ADMIN",
+        isOwner: true,
+        isSuperAdmin: false,
+        title: "站长",
+      },
+      select: { id: true, username: true, role: true, isOwner: true },
     });
 
     return NextResponse.json({
       success: true,
-      message: `已将用户 ${user.username} 设为管理员`,
+      message: `已将用户 ${user.username} 设为站长`,
       user,
     });
   } catch (error) {
     console.error("First admin setup error:", error);
     return NextResponse.json(
-      { error: "设置管理员失败" },
+      { error: "设置站长失败" },
       { status: 500 }
     );
   }

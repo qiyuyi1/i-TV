@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { getImageUrl } from "@/lib/tmdb";
+import { getImageUrl } from "@/lib/image";
 import { getTypeLabel } from "@/lib/resourceTypes";
 
 interface ResourceCardProps {

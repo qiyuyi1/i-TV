@@ -4,14 +4,22 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getImageUrl } from "@/lib/tmdb";
+import { getImageUrl } from "@/lib/image";
 import { getTypeLabel } from "@/lib/resourceTypes";
+import {
+  QUALITY_OPTIONS,
+  STORAGE_OPTIONS,
+  getUserTitle,
+  getLevelFromExperience,
+  hasAdminPermission,
+} from "@/lib/constants";
 
 interface ResourceLink {
   id: string;
   label: string;
   url: string;
   type: string;
+  quality?: string;
   addedBy?: { username: string };
   createdAt: string;
 }
@@ -35,10 +43,22 @@ interface Resource {
   createdBy?: { id: string; username: string } | null;
 }
 
-const linkTypes = [
-  "夸克网盘",
-  "光鸭网盘",
-];
+interface Comment {
+  id: string;
+  content: string;
+  isPinned: boolean;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    level: number;
+    experience: number;
+    title: string | null;
+    role: string;
+    isOwner: boolean;
+    isSuperAdmin: boolean;
+  };
+}
 
 const statusOptions = ["更新中", "已完结", "待更新"];
 
@@ -50,7 +70,11 @@ export default function ResourceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showAddLink, setShowAddLink] = useState(false);
   const [showEditInfo, setShowEditInfo] = useState(false);
-  const [newLink, setNewLink] = useState({ label: "", url: "", type: "夸克网盘" });
+  const [newLink, setNewLink] = useState({
+    storage: STORAGE_OPTIONS[0],
+    quality: QUALITY_OPTIONS[0],
+    url: "",
+  });
   const [editForm, setEditForm] = useState({
     currentEpisode: "",
     totalEpisodes: "",
@@ -63,8 +87,14 @@ export default function ResourceDetailPage() {
     backdropPath: "",
   });
 
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [showCommentForm, setShowCommentForm] = useState(false);
+  const [openMenuLinkId, setOpenMenuLinkId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchResource();
+    fetchComments();
   }, [params.id]);
 
   const fetchResource = async () => {
@@ -85,29 +115,47 @@ export default function ResourceDetailPage() {
     setLoading(false);
   };
 
+  const fetchComments = async () => {
+    try {
+      const res = await fetch(`/api/resources/${params.id}/comments`);
+      const data = await res.json();
+      setComments(data);
+    } catch (error) {
+      console.error("Fetch comments error:", error);
+    }
+  };
+
   const handleAddLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLink.label || !newLink.url) return;
+    if (!newLink.url) return;
+
+    const label = `${newLink.storage}${newLink.quality}`;
 
     const res = await fetch(`/api/resources/${params.id}/links`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newLink),
+      body: JSON.stringify({
+        label,
+        url: newLink.url,
+        type: newLink.storage,
+        quality: newLink.quality,
+      }),
     });
 
     if (res.ok) {
-      setNewLink({ label: "", url: "", type: "夸克网盘" });
+      setNewLink({ storage: STORAGE_OPTIONS[0], quality: QUALITY_OPTIONS[0], url: "" });
       setShowAddLink(false);
       fetchResource();
     }
   };
 
   const handleDeleteLink = async (linkId: string) => {
-    if (!confirm("确定删除这个链接吗？")) return;
+    if (!confirm("确定删除这个链接吗？删除将扣除添加者 5 XP。")) return;
 
     await fetch(`/api/resources/${params.id}/links/${linkId}`, {
       method: "DELETE",
     });
+    setOpenMenuLinkId(null);
     fetchResource();
   };
 
@@ -131,6 +179,41 @@ export default function ResourceDetailPage() {
 
     await fetch(`/api/resources/${params.id}`, { method: "DELETE" });
     router.push("/");
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+
+    const res = await fetch(`/api/resources/${params.id}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: newComment.trim() }),
+    });
+
+    if (res.ok) {
+      setNewComment("");
+      setShowCommentForm(false);
+      fetchComments();
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm("确定删除这条评论吗？")) return;
+
+    await fetch(`/api/resources/${params.id}/comments/${commentId}`, {
+      method: "DELETE",
+    });
+    fetchComments();
+  };
+
+  const handleTogglePin = async (commentId: string, currentPinned: boolean) => {
+    await fetch(`/api/resources/${params.id}/comments/${commentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPinned: !currentPinned }),
+    });
+    fetchComments();
   };
 
   if (loading) {
@@ -166,20 +249,61 @@ export default function ResourceDetailPage() {
     (session.user as any)?.id === resource.createdBy?.id
   );
 
+  const sessionUser = session?.user as any;
+  const canAdminAction = session && hasAdminPermission({
+    role: sessionUser?.role,
+    isOwner: sessionUser?.isOwner,
+    isSuperAdmin: sessionUser?.isSuperAdmin,
+  });
+
+  const getCommentUserBadge = (user: Comment["user"]) => {
+    const title = getUserTitle({
+      role: user.role,
+      isOwner: user.isOwner,
+      isSuperAdmin: user.isSuperAdmin,
+      title: user.title,
+    });
+
+    if (title) {
+      const colorMap: Record<string, string> = {
+        "站长": "bg-amber-500/20 text-amber-400",
+        "副站长": "bg-purple-500/20 text-purple-400",
+        "管理员": "bg-red-500/20 text-red-400",
+      };
+      const colorClass = colorMap[title] || "bg-blue-500/20 text-blue-400";
+      return (
+        <span className={`px-2 py-0.5 text-xs rounded font-medium ${colorClass}`}>
+          {title}
+        </span>
+      );
+    }
+
+    const level = getLevelFromExperience(user.experience);
+    return (
+      <span className="px-2 py-0.5 text-xs rounded font-medium bg-gray-600/40 text-gray-300">
+        LV{level}
+      </span>
+    );
+  };
+
   return (
     <div className="pt-20 pb-16">
       {resource.backdropPath && (
-        <div
-          className="fixed inset-0 w-full h-64 opacity-30 blur-xl"
-          style={{
-            backgroundImage: `url(${getImageUrl(
-              resource.backdropPath,
-              "original"
-            )})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
+        <>
+          <div
+            className="fixed inset-0 w-full h-full pointer-events-none"
+            style={{
+              backgroundImage: `url(${getImageUrl(
+                resource.backdropPath,
+                "original"
+              )})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: 0.35,
+            }}
+          />
+          <div className="fixed inset-0 w-full h-full pointer-events-none bg-gradient-to-b from-gray-950/60 via-gray-950/30 to-gray-950/80" />
+        </>
       )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -214,11 +338,11 @@ export default function ResourceDetailPage() {
                   alt={resource.title}
                   className="w-full max-h-[70vh] md:max-h-[calc(100vh-10rem)] object-contain block rounded-t-2xl md:rounded-l-2xl"
                 />
-                ) : (
-                  <div className="w-full aspect-[2/3] bg-gray-800 flex items-center justify-center">
-                    <span className="text-6xl">🎬</span>
-                  </div>
-                )}
+              ) : (
+                <div className="w-full aspect-[2/3] bg-gray-800 flex items-center justify-center">
+                  <span className="text-6xl">🎬</span>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 p-6 md:p-8">
@@ -312,7 +436,16 @@ export default function ResourceDetailPage() {
                 <div>
                   <div className="text-gray-500 text-xs mb-1">添加者</div>
                   <div className="font-medium text-white">
-                    {resource.createdBy?.username || "未知"}
+                    {resource.createdBy?.username ? (
+                      <Link
+                        href={`/user/${resource.createdBy.username}`}
+                        className="hover:text-blue-400 transition-colors"
+                      >
+                        {resource.createdBy.username}
+                      </Link>
+                    ) : (
+                      "未知"
+                    )}
                   </div>
                 </div>
               </div>
@@ -336,7 +469,7 @@ export default function ResourceDetailPage() {
               )}
 
               {canEdit && (
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3 mb-4">
                   <button
                     onClick={() => setShowEditInfo(!showEditInfo)}
                     className="px-4 py-2 glass glass-hover text-white rounded-lg transition-colors text-sm"
@@ -356,6 +489,71 @@ export default function ResourceDetailPage() {
                     {showAddLink ? "取消" : "+ 添加链接"}
                   </button>
                 </div>
+              )}
+
+              {resource.links && resource.links.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {resource.links.map((link) => (
+                    <div key={link.id} className="relative">
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass glass-hover text-sm text-blue-300 hover:text-blue-200 transition-colors"
+                      >
+                        <span>{link.label}</span>
+                      </a>
+                      {session && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setOpenMenuLinkId(openMenuLinkId === link.id ? null : link.id);
+                          }}
+                          className="ml-1 text-gray-500 hover:text-red-400 transition-colors"
+                          title="管理链接"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <circle cx="4" cy="10" r="1.5" />
+                            <circle cx="10" cy="10" r="1.5" />
+                            <circle cx="16" cy="10" r="1.5" />
+                          </svg>
+                        </button>
+                      )}
+                      {openMenuLinkId === link.id && (
+                        <div className="absolute left-0 mt-1 z-20 glass rounded-lg py-1 min-w-[120px] shadow-xl">
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-white/5"
+                          >
+                            打开链接
+                          </a>
+                          <button
+                            onClick={() => handleDeleteLink(link.id)}
+                            className="block w-full text-left px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          >
+                            删除链接 (-5 XP)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!canEdit && session && (!resource.links || resource.links.length === 0) && (
+                <div className="text-center py-6">
+                  <p className="text-gray-400 text-sm">暂无资源链接</p>
+                </div>
+              )}
+
+              {openMenuLinkId && (
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setOpenMenuLinkId(null)}
+                />
               )}
             </div>
           </div>
@@ -451,7 +649,7 @@ export default function ResourceDetailPage() {
                     setEditForm({ ...editForm, posterPath: e.target.value })
                   }
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  placeholder="支持 TMDB 路径 /abc123.jpg 或图片URL"
+                  placeholder="支持图片路径或URL，如 /abc123.jpg"
                 />
                 <p className="text-gray-500 text-xs mt-1">
                   任意图片URL即可
@@ -480,7 +678,7 @@ export default function ResourceDetailPage() {
                     setEditForm({ ...editForm, backdropPath: e.target.value })
                   }
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  placeholder="支持 TMDB 路径 /abc123.jpg 或图片URL"
+                  placeholder="支持图片路径或URL，如 /abc123.jpg"
                 />
                 <p className="text-gray-500 text-xs mt-1">
                   用于详情页顶部的模糊背景效果，可选
@@ -528,16 +726,16 @@ export default function ResourceDetailPage() {
             <form onSubmit={handleAddLink} className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-gray-300 text-sm mb-2">
-                  链接类型
+                  网盘类型
                 </label>
                 <select
-                  value={newLink.type}
+                  value={newLink.storage}
                   onChange={(e) =>
-                    setNewLink({ ...newLink, type: e.target.value })
+                    setNewLink({ ...newLink, storage: e.target.value })
                   }
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 >
-                  {linkTypes.map((t) => (
+                  {STORAGE_OPTIONS.map((t) => (
                     <option key={t} value={t} className="bg-gray-900 text-white">
                       {t}
                     </option>
@@ -546,18 +744,21 @@ export default function ResourceDetailPage() {
               </div>
               <div>
                 <label className="block text-gray-300 text-sm mb-2">
-                  名称/标签
+                  资源质量
                 </label>
-                <input
-                  type="text"
-                  value={newLink.label}
+                <select
+                  value={newLink.quality}
                   onChange={(e) =>
-                    setNewLink({ ...newLink, label: e.target.value })
+                    setNewLink({ ...newLink, quality: e.target.value })
                   }
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  placeholder="如：夸克网盘-高清"
-                  required
-                />
+                >
+                  {QUALITY_OPTIONS.map((q) => (
+                    <option key={q} value={q} className="bg-gray-900 text-white">
+                      {q}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-gray-300 text-sm mb-2">
@@ -575,6 +776,14 @@ export default function ResourceDetailPage() {
                 />
               </div>
               <div className="md:col-span-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-gray-400 text-sm">标签预览：</span>
+                  <span className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-sm">
+                    {newLink.storage}{newLink.quality}
+                  </span>
+                </div>
+              </div>
+              <div className="md:col-span-3">
                 <button
                   type="submit"
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -586,83 +795,127 @@ export default function ResourceDetailPage() {
           </div>
         )}
 
-        <div className="mt-6">
+        <div className="mt-6 glass rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">资源链接</h2>
+            <h2 className="text-xl font-bold text-white">
+              评论 ({comments.length})
+            </h2>
             {session && (
               <button
-                onClick={() => setShowAddLink(!showAddLink)}
+                onClick={() => setShowCommentForm(!showCommentForm)}
                 className="text-blue-400 hover:text-blue-300 text-sm"
               >
-                + 添加新链接
+                {showCommentForm ? "取消" : "+ 发表评论"}
               </button>
             )}
           </div>
 
-          {resource.links && resource.links.length > 0 ? (
-            <div className="grid gap-3">
-              {resource.links.map((link) => (
-                <div
-                  key={link.id}
-                  className="glass glass-hover rounded-xl p-4 flex items-center justify-between gap-4"
+          {showCommentForm && session && (
+            <form onSubmit={handleAddComment} className="mb-6">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+                rows={3}
+                placeholder="写下你的评论... (最多500字)"
+                maxLength={500}
+              />
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-gray-500 text-xs">
+                  {newComment.length}/500
+                </span>
+                <button
+                  type="submit"
+                  disabled={!newComment.trim()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">
-                        {link.type}
-                      </span>
-                      <span className="text-white font-medium">
-                        {link.label}
-                      </span>
-                    </div>
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-400 text-sm hover:text-blue-400 truncate block"
-                    >
-                      {link.url}
-                    </a>
-                    {link.addedBy && (
-                      <p className="text-gray-500 text-xs mt-1">
-                        由 {link.addedBy.username} 添加于{" "}
-                        {new Date(link.createdAt).toLocaleDateString("zh-CN")}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-                    >
-                      访问
-                    </a>
-                    {session && (
-                      <button
-                        onClick={() => handleDeleteLink(link.id)}
-                        className="px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors text-sm"
-                      >
-                        删除
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  发送评论
+                </button>
+              </div>
+            </form>
+          )}
+
+          {!session && (
+            <div className="text-center py-4 mb-4">
+              <p className="text-gray-400 text-sm">
+                <Link href="/login" className="text-blue-400 hover:text-blue-300">
+                  登录
+                </Link>{" "}
+                后即可发表评论
+              </p>
+            </div>
+          )}
+
+          {comments.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-3xl mb-2">💬</div>
+              <p className="text-gray-400 text-sm">暂无评论，来发表第一条吧</p>
             </div>
           ) : (
-            <div className="text-center py-12 glass rounded-xl">
-              <div className="text-4xl mb-3">🔗</div>
-              <p className="text-gray-400">暂无资源链接</p>
-              {session && (
-                <button
-                  onClick={() => setShowAddLink(true)}
-                  className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  添加第一个链接
-                </button>
-              )}
+            <div className="space-y-4">
+              {comments.map((comment) => {
+                const isOwner = sessionUser?.id === comment.user.id;
+                const canDeleteComment = isOwner || canAdminAction;
+                const canPinComment = canAdminAction;
+
+                return (
+                  <div
+                    key={comment.id}
+                    className={`glass rounded-xl p-4 ${
+                      comment.isPinned ? "border-amber-500/30 bg-amber-500/5" : ""
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {comment.isPinned && (
+                          <span className="text-amber-400" title="置顶评论">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M5.5 2a.5.5 0 000 1h.5v3.5L3 9h4v7a1 1 0 001 1h4a1 1 0 001-1V9h4L14 6.5V3h.5a.5.5 0 000-1h-9z" />
+                            </svg>
+                          </span>
+                        )}
+                        <Link
+                          href={`/user/${comment.user.username}`}
+                          className="text-white font-medium hover:text-blue-400 transition-colors"
+                        >
+                          {comment.user.username}
+                        </Link>
+                        {getCommentUserBadge(comment.user)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 text-xs">
+                          {new Date(comment.createdAt).toLocaleString("zh-CN")}
+                        </span>
+                        {canPinComment && (
+                          <button
+                            onClick={() => handleTogglePin(comment.id, comment.isPinned)}
+                            className={`text-xs px-2 py-1 rounded transition-colors ${
+                              comment.isPinned
+                                ? "text-amber-400 hover:text-amber-300"
+                                : "text-gray-500 hover:text-amber-400"
+                            }`}
+                            title={comment.isPinned ? "取消置顶" : "置顶评论"}
+                          >
+                            {comment.isPinned ? "取消置顶" : "置顶"}
+                          </button>
+                        )}
+                        {canDeleteComment && (
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="text-xs px-2 py-1 text-red-400 hover:text-red-300 transition-colors"
+                            title="删除评论"
+                          >
+                            删除
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap break-words">
+                      {comment.content}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

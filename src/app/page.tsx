@@ -61,9 +61,9 @@ export default function HomePage() {
     <div className="pt-20 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">i帅TV</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">i-TV</h1>
           <p className="text-gray-400">
-            发现和分享精彩的电影、剧集、综艺、纪录片等资源
+            发现和分享精彩的电影、剧集、综艺、纪录等资源
           </p>
         </div>
 

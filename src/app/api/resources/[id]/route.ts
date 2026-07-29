@@ -60,9 +60,13 @@ export async function PATCH(
 
     const userRole = (session.user as any)?.role;
     const userId = (session.user as any)?.id;
+    const isOwner = (session.user as any)?.isOwner;
+    const isSuperAdmin = (session.user as any)?.isSuperAdmin;
+
+    const hasAdminAccess = userRole === "ADMIN" || isOwner || isSuperAdmin;
 
     // Allow update if user is the creator or an admin
-    if (resource.createdById !== userId && userRole !== "ADMIN") {
+    if (resource.createdById !== userId && !hasAdminAccess) {
       return NextResponse.json(
         { error: "无权修改此资源，仅创建者或管理员可操作" },
         { status: 403 }
@@ -130,9 +134,13 @@ export async function DELETE(
 
     const userRole = (session.user as any)?.role;
     const userId = (session.user as any)?.id;
+    const isOwner = (session.user as any)?.isOwner;
+    const isSuperAdmin = (session.user as any)?.isSuperAdmin;
+
+    const hasAdminAccess = userRole === "ADMIN" || isOwner || isSuperAdmin;
 
     // Allow deletion if user is the creator or an admin
-    if (resource.createdById !== userId && userRole !== "ADMIN") {
+    if (resource.createdById !== userId && !hasAdminAccess) {
       return NextResponse.json(
         { error: "无权删除此资源" },
         { status: 403 }

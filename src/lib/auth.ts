@@ -34,6 +34,11 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           username: user.username,
           role: user.role,
+          level: user.level,
+          experience: user.experience,
+          title: user.title,
+          isOwner: user.isOwner,
+          isSuperAdmin: user.isSuperAdmin,
         };
       },
     }),
@@ -47,6 +52,11 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role;
         token.id = (user as any).id;
         token.username = (user as any).username;
+        token.level = (user as any).level;
+        token.experience = (user as any).experience;
+        token.title = (user as any).title;
+        token.isOwner = (user as any).isOwner;
+        token.isSuperAdmin = (user as any).isSuperAdmin;
       }
       return token;
     },
@@ -55,6 +65,11 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
         (session.user as any).username = token.username;
+        (session.user as any).level = token.level;
+        (session.user as any).experience = token.experience;
+        (session.user as any).title = token.title;
+        (session.user as any).isOwner = token.isOwner;
+        (session.user as any).isSuperAdmin = token.isSuperAdmin;
       }
       return session;
     },

@@ -4,11 +4,17 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getUserTitle, hasAdminPermission, canManageUsers } from "@/lib/constants";
 
 interface UserInfo {
   id: string;
   username: string;
   role: string;
+  level: number;
+  experience: number;
+  title: string | null;
+  isOwner: boolean;
+  isSuperAdmin: boolean;
   createdAt: string;
   _count?: { resources: number };
 }
@@ -21,8 +27,12 @@ export default function AdminPage() {
   const [actionMessage, setActionMessage] = useState("");
   const [setupToken, setSetupToken] = useState("");
   const [setupMessage, setSetupMessage] = useState("");
+  const [customTitle, setCustomTitle] = useState("");
 
+  const isOwner = session && (session.user as any)?.isOwner;
+  const isSuperAdmin = session && (session.user as any)?.isSuperAdmin;
   const isAdmin = session && (session.user as any)?.role === "ADMIN";
+  const hasAdminAccess = isOwner || isSuperAdmin || isAdmin;
 
   const handleSearchUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,20 +54,45 @@ export default function AdminPage() {
     }
   };
 
-  const handleChangeRole = async (username: string, newRole: string) => {
+  const handleAssignRole = async (username: string, role: string) => {
     try {
       const res = await fetch(`/api/admin/users/${username}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: newRole }),
+        body: JSON.stringify({ assignRole: role }),
       });
 
       if (res.ok) {
         const data = await res.json();
         setActionMessage(`✅ ${data.message}`);
         setSearchResult((prev) =>
-          prev ? { ...prev, role: newRole } : null
+          prev ? { ...prev, role: data.user.role, isOwner: data.user.isOwner, isSuperAdmin: data.user.isSuperAdmin, title: data.user.title } : null
         );
+      } else {
+        const data = await res.json();
+        setActionMessage(`❌ ${data.error || "操作失败"}`);
+      }
+    } catch {
+      setActionMessage("❌ 网络请求失败");
+    }
+  };
+
+  const handleSetCustomTitle = async (username: string) => {
+    if (!customTitle.trim()) return;
+    try {
+      const res = await fetch(`/api/admin/users/${username}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: customTitle.trim() }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setActionMessage(`✅ 已设置头衔：${data.user.title}`);
+        setSearchResult((prev) =>
+          prev ? { ...prev, title: data.user.title } : null
+        );
+        setCustomTitle("");
       } else {
         const data = await res.json();
         setActionMessage(`❌ ${data.error || "操作失败"}`);
@@ -102,7 +137,7 @@ export default function AdminPage() {
         <div className="text-center glass rounded-2xl p-8 max-w-md">
           <div className="text-6xl mb-4">🔐</div>
           <h1 className="text-2xl text-white mb-2">请先登录</h1>
-          <p className="text-gray-400 mb-4">登录后可申请成为首个管理员</p>
+          <p className="text-gray-400 mb-4">登录后可申请成为首个站长</p>
           <Link
             href="/login"
             className="inline-block px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -115,12 +150,12 @@ export default function AdminPage() {
   }
 
   // Logged in but not admin - show first admin setup
-  if (!isAdmin) {
+  if (!hasAdminAccess) {
     return (
       <div className="pt-20 min-h-screen">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">管理员设置</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">站长设置</h1>
             <p className="text-gray-400">
               当前账户：{(session.user as any)?.username}（普通用户）
             </p>
@@ -131,10 +166,10 @@ export default function AdminPage() {
               <div className="text-2xl">⚡</div>
               <div>
                 <h2 className="text-lg font-semibold text-white">
-                  首个管理员设置
+                  首个站长设置
                 </h2>
                 <p className="text-gray-400 text-sm">
-                  如果系统尚无管理员，你可以使用安全令牌将当前账户升级为管理员
+                  如果系统尚无站长，你可以使用安全令牌将当前账户升级为站长
                 </p>
               </div>
             </div>
@@ -152,7 +187,7 @@ export default function AdminPage() {
                   placeholder="输入 NEXTAUTH_SECRET 的值"
                 />
                 <p className="text-gray-500 text-xs mt-1">
-                  此令牌可在 Vercel 项目 → Settings → Environment Variables 中查看
+                  此令牌可在部署平台的环境变量中查看
                 </p>
               </div>
 
@@ -170,19 +205,9 @@ export default function AdminPage() {
                 type="submit"
                 className="w-full px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors"
               >
-                升级为管理员
+                升级为站长
               </button>
             </form>
-          </div>
-
-          <div className="glass rounded-2xl p-6">
-            <h3 className="text-white font-medium mb-2">💡 获取令牌方法</h3>
-            <ol className="text-gray-400 text-sm space-y-2 list-decimal list-inside">
-              <li>登录 Vercel → 进入 i-TV 项目</li>
-              <li>点击顶部 Settings → 左侧 Environment Variables</li>
-              <li>找到 <code className="text-amber-400">NEXTAUTH_SECRET</code>，点击眼睛图标显示值</li>
-              <li>复制该值并粘贴到上方输入框</li>
-            </ol>
           </div>
         </div>
       </div>
@@ -195,10 +220,13 @@ export default function AdminPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">
-            管理员控制台
+            管理控制台
           </h1>
           <p className="text-gray-400">
             管理用户权限和系统设置
+            {isOwner && <span className="ml-2 text-amber-400">(站长模式)</span>}
+            {isSuperAdmin && <span className="ml-2 text-orange-400">(副站长模式)</span>}
+            {isAdmin && !isOwner && !isSuperAdmin && <span className="ml-2 text-blue-400">(管理员模式)</span>}
           </p>
         </div>
 
@@ -239,37 +267,140 @@ export default function AdminPage() {
                     注册于 {new Date(searchResult.createdAt).toLocaleDateString("zh-CN")}
                   </p>
                 </div>
-                <span
-                  className={`px-3 py-1 rounded text-xs font-medium ${
-                    searchResult.role === "ADMIN"
-                      ? "bg-amber-500/20 text-amber-400"
-                      : "bg-blue-500/20 text-blue-400"
-                  }`}
-                >
-                  {searchResult.role === "ADMIN" ? "管理员" : "普通用户"}
-                </span>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const title = getUserTitle(searchResult);
+                    if (title) {
+                      return (
+                        <span className={`px-3 py-1 rounded text-xs font-medium ${
+                          title === "站长" ? "bg-amber-500/20 text-amber-400" :
+                          title === "副站长" ? "bg-orange-500/20 text-orange-400" :
+                          title === "管理员" ? "bg-blue-500/20 text-blue-400" :
+                          "bg-purple-500/20 text-purple-400"
+                        }`}>
+                          {title}
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="px-3 py-1 bg-gray-500/20 text-gray-400 rounded text-xs font-medium">
+                        LV{searchResult.level}
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
 
-              <div className="flex gap-3">
-                {searchResult.role !== "ADMIN" && (
-                  <button
-                    onClick={() =>
-                      handleChangeRole(searchResult.username, "ADMIN")
-                    }
-                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm transition-colors"
-                  >
-                    设为管理员
-                  </button>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="text-center glass rounded-lg p-2">
+                  <div className="text-lg font-bold text-white">{searchResult.experience}</div>
+                  <div className="text-gray-400 text-xs">经验值</div>
+                </div>
+                <div className="text-center glass rounded-lg p-2">
+                  <div className="text-lg font-bold text-white">{searchResult._count?.resources || 0}</div>
+                  <div className="text-gray-400 text-xs">添加资源</div>
+                </div>
+                <div className="text-center glass rounded-lg p-2">
+                  <div className="text-lg font-bold text-white">{searchResult.level}</div>
+                  <div className="text-gray-400 text-xs">等级</div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {/* Role assignment - only for users below current admin level */}
+                {isOwner && (
+                  <div className="flex gap-2 flex-wrap">
+                    {!searchResult.isOwner && (
+                      <>
+                        {!searchResult.isSuperAdmin && searchResult.role !== "ADMIN" && (
+                          <button
+                            onClick={() => handleAssignRole(searchResult.username, "ADMIN")}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+                          >
+                            设为管理员
+                          </button>
+                        )}
+                        {!searchResult.isSuperAdmin && (
+                          <button
+                            onClick={() => handleAssignRole(searchResult.username, "SUPER_ADMIN")}
+                            className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm transition-colors"
+                          >
+                            设为副站长
+                          </button>
+                        )}
+                        {(searchResult.role === "ADMIN" || searchResult.isSuperAdmin) && (
+                          <button
+                            onClick={() => handleAssignRole(searchResult.username, "USER")}
+                            className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm transition-colors"
+                          >
+                            取消权限
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 )}
-                {searchResult.role === "ADMIN" && (
-                  <button
-                    onClick={() =>
-                      handleChangeRole(searchResult.username, "USER")
-                    }
-                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm transition-colors"
-                  >
-                    取消管理员
-                  </button>
+
+                {isSuperAdmin && (
+                  <div className="flex gap-2 flex-wrap">
+                    {!searchResult.isOwner && !searchResult.isSuperAdmin && (
+                      <>
+                        {searchResult.role !== "ADMIN" && (
+                          <button
+                            onClick={() => handleAssignRole(searchResult.username, "ADMIN")}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+                          >
+                            设为管理员
+                          </button>
+                        )}
+                        {searchResult.role === "ADMIN" && (
+                          <button
+                            onClick={() => handleAssignRole(searchResult.username, "USER")}
+                            className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm transition-colors"
+                          >
+                            取消管理员
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Custom title for non-admin users */}
+                {(isOwner || isSuperAdmin) && !searchResult.isOwner && !searchResult.isSuperAdmin && (
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={customTitle}
+                      onChange={(e) => setCustomTitle(e.target.value)}
+                      placeholder="设置自定义头衔（如：神人、仙人、凡人）"
+                      className="flex-1 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    />
+                    <button
+                      onClick={() => handleSetCustomTitle(searchResult.username)}
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition-colors"
+                    >
+                      设置头衔
+                    </button>
+                    {searchResult.title && (
+                      <button
+                        onClick={async () => {
+                          const res = await fetch(`/api/admin/users/${searchResult.username}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ title: null }),
+                          });
+                          if (res.ok) {
+                            setSearchResult((prev) => prev ? { ...prev, title: null } : null);
+                            setActionMessage("✅ 已清除头衔");
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm transition-colors"
+                      >
+                        清除头衔
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -287,7 +418,7 @@ export default function AdminPage() {
             >
               <h3 className="text-white font-medium mb-1">添加资源</h3>
               <p className="text-gray-400 text-sm">
-                从 TMDB 搜索并添加新的影视资源
+                添加新的影视资源
               </p>
             </Link>
             <Link
