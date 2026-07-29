@@ -32,7 +32,7 @@ interface Resource {
   status: string | null;
   notes: string | null;
   links: ResourceLink[];
-  createdBy?: { username: string } | null;
+  createdBy?: { id: string; username: string } | null;
 }
 
 const linkTypes = [
@@ -57,6 +57,7 @@ export default function ResourceDetailPage() {
     status: "",
     notes: "",
     title: "",
+    originalTitle: "",
     overview: "",
     posterPath: "",
     backdropPath: "",
@@ -76,6 +77,7 @@ export default function ResourceDetailPage() {
       status: data.status || "",
       notes: data.notes || "",
       title: data.title || "",
+      originalTitle: data.originalTitle || "",
       overview: data.overview || "",
       posterPath: data.posterPath || "",
       backdropPath: data.backdropPath || "",
@@ -158,6 +160,11 @@ export default function ResourceDetailPage() {
   }
 
   const genres = resource.genres ? JSON.parse(resource.genres) : [];
+
+  const canEdit = session && (
+    (session.user as any)?.role === "ADMIN" ||
+    (session.user as any)?.id === resource.createdBy?.id
+  );
 
   return (
     <div className="pt-20 pb-16">
@@ -328,13 +335,19 @@ export default function ResourceDetailPage() {
                 </div>
               )}
 
-              {session && (
+              {canEdit && (
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={() => setShowEditInfo(!showEditInfo)}
                     className="px-4 py-2 glass glass-hover text-white rounded-lg transition-colors text-sm"
                   >
                     {showEditInfo ? "取消编辑" : "编辑信息"}
+                  </button>
+                  <button
+                    onClick={handleDeleteResource}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
+                  >
+                    删除资源
                   </button>
                   <button
                     onClick={() => setShowAddLink(!showAddLink)}
@@ -364,6 +377,20 @@ export default function ResourceDetailPage() {
                   }
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   placeholder="资源标题"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-gray-300 text-sm mb-2">
+                  原名
+                </label>
+                <input
+                  type="text"
+                  value={editForm.originalTitle}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, originalTitle: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="原始标题（可选）"
                 />
               </div>
               <div>

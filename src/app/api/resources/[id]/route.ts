@@ -20,7 +20,7 @@ export async function GET(
           },
         },
         createdBy: {
-          select: { username: true },
+          select: { id: true, username: true },
         },
       },
     });
@@ -50,6 +50,25 @@ export async function PATCH(
       return NextResponse.json({ error: "请先登录" }, { status: 401 });
     }
 
+    const resource = await prisma.resource.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!resource) {
+      return NextResponse.json({ error: "资源不存在" }, { status: 404 });
+    }
+
+    const userRole = (session.user as any)?.role;
+    const userId = (session.user as any)?.id;
+
+    // Allow update if user is the creator or an admin
+    if (resource.createdById !== userId && userRole !== "ADMIN") {
+      return NextResponse.json(
+        { error: "无权修改此资源，仅创建者或管理员可操作" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const {
       currentEpisode,
@@ -58,6 +77,7 @@ export async function PATCH(
       notes,
       overview,
       title,
+      originalTitle,
       posterPath,
       backdropPath,
     } = body;
@@ -70,15 +90,16 @@ export async function PATCH(
     if (notes !== undefined) updateData.notes = notes;
     if (overview !== undefined) updateData.overview = overview;
     if (title !== undefined) updateData.title = title;
+    if (originalTitle !== undefined) updateData.originalTitle = originalTitle || null;
     if (posterPath !== undefined) updateData.posterPath = posterPath || null;
     if (backdropPath !== undefined) updateData.backdropPath = backdropPath || null;
 
-    const resource = await prisma.resource.update({
+    const updatedResource = await prisma.resource.update({
       where: { id: params.id },
       data: updateData,
     });
 
-    return NextResponse.json(resource);
+    return NextResponse.json(updatedResource);
   } catch (error) {
     console.error("Update resource error:", error);
     return NextResponse.json(
