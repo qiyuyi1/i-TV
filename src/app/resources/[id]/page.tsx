@@ -201,12 +201,12 @@ export default function ResourceDetailPage() {
         <div className="glass rounded-2xl overflow-hidden">
           <div className="md:flex">
             <div className="md:w-64 flex-shrink-0">
-              <div className="aspect-[2/3] md:aspect-auto md:h-full">
+              <div className="md:aspect-auto md:h-full">
                 {resource.posterPath ? (
                   <img
                     src={getImageUrl(resource.posterPath, "w500")}
                     alt={resource.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 ) : (
                   <div className="w-full h-full bg-gray-800 flex items-center justify-center">
@@ -429,7 +429,7 @@ export default function ResourceDetailPage() {
                   placeholder="支持 TMDB 路径 /abc123.jpg 或图片URL"
                 />
                 <p className="text-gray-500 text-xs mt-1">
-                  只要保留任意图片URL即可
+                  任意图片URL即可
                 </p>
                 {editForm.posterPath && (
                   <div className="mt-2">
