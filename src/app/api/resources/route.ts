@@ -34,11 +34,12 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(resources);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Fetch resources error:", error);
+    const message = error?.message || "未知错误";
     return NextResponse.json(
-      { error: "获取资源列表失败" },
-      { status: 500 }
+      { error: `获取资源列表失败: ${message}`, details: message },
+      { status: 503 }
     );
   }
 }
@@ -108,11 +109,12 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(resource, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Create resource error:", error);
+    const message = error?.message || "未知错误";
     return NextResponse.json(
-      { error: "创建资源失败" },
-      { status: 500 }
+      { error: `创建资源失败: ${message}`, details: message },
+      { status: 503 }
     );
   }
 }

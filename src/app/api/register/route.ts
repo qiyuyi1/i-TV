@@ -54,11 +54,12 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ user, success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Registration error:", error);
+    const message = error?.message || "未知错误";
     return NextResponse.json(
-      { error: "注册失败，请重试" },
-      { status: 500 }
+      { error: `注册失败: ${message}`, details: message },
+      { status: 503 }
     );
   }
 }
