@@ -650,7 +650,7 @@ export default function AddResourcePage() {
                             placeholder="支持 TMDB 路径 /abc123.jpg 或图片URL"
                           />
                           <p className="text-gray-500 text-xs mt-1">
-                            TMDB: 打开影片页 → F12 → 复制海报路径 (如 /abc123.jpg)；或粘贴任意图片 URL
+                            只要保留任意图片URL即可
                           </p>
                           {manualForm.posterPath && (
                             <div className="mt-2">

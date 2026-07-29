@@ -429,8 +429,7 @@ export default function ResourceDetailPage() {
                   placeholder="支持 TMDB 路径 /abc123.jpg 或图片URL"
                 />
                 <p className="text-gray-500 text-xs mt-1">
-                  TMDB: 打开 TMDB 影片页 → F12 → 复制海报 img 的 src 后半段 (如 /abc123.jpg)；
-                  或直接粘贴任意图片 URL
+                  只要保留任意图片URL即可
                 </p>
                 {editForm.posterPath && (
                   <div className="mt-2">

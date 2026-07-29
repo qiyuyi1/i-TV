@@ -23,20 +23,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if any admin already exists
-    const existingAdmin = await prisma.user.findFirst({
-      where: { role: "ADMIN" },
-    });
-
-    if (existingAdmin) {
-      return NextResponse.json(
-        {
-          error: "已存在管理员，无法使用首次设置。请联系现有管理员通过管理后台操作。",
-        },
-        { status: 400 }
-      );
-    }
-
     const userId = (session.user as any)?.id;
     if (!userId) {
       return NextResponse.json({ error: "用户信息无效" }, { status: 400 });
