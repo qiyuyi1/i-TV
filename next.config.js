@@ -9,6 +9,16 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "@prisma/client/runtime/library.js": "@prisma/client/runtime/edge.js",
+        "@prisma/client/runtime/library": "@prisma/client/runtime/edge.js",
+      };
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;
