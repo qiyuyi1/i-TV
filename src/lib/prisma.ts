@@ -1,67 +1,42 @@
-import pg from "pg";
+// Prisma Client initialization for Cloudflare Workers (edge runtime).
+//
+// Key constraint: the Prisma /edge runtime entry (WASM query engine) does NOT
+// accept the `adapter` option (driver adapters).  Passing `adapter` while
+// using the /edge entry throws:
+//   "Prisma Client was configured to use the `adapter` option but it was
+//    imported via its `/edge` endpoint."
+//
+// We therefore:
+//   1) Always construct PrismaClient WITHOUT the adapter option so the
+//      WASM-based edge runtime takes over and uses the Node TCP-compatible
+//      socket APIs exposed by Cloudflare's `nodejs_compat` compatibility flag.
+//   2) Remove the @prisma/adapter-pg dependency at runtime.  We do NOT need it
+//      when running on edge runtime since DATABASE_URL (postgres://) is read
+//      directly from env.
 
-// Use default Prisma client entry - webpack alias handles runtime swap
-// @ts-ignore - Prisma types
-import { PrismaClient } from "@prisma/client";
 // @ts-ignore
-import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
 
 export type { Prisma } from "@prisma/client";
 
 let _prisma: PrismaClient | null = null;
-let _pool: pg.Pool | null = null;
 let _initError: string | null = null;
-
-function getPool(): pg.Pool {
-  if (_pool) return _pool;
-
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL environment variable is not set");
-  }
-
-  _pool = new pg.Pool({
-    connectionString,
-    max: 1,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-    ssl: { rejectUnauthorized: false },
-  });
-
-  _pool.on("error", (err) => {
-    console.error("Database pool error:", err.message);
-  });
-
-  return _pool;
-}
 
 export function getPrismaClient(): PrismaClient {
   if (_prisma) return _prisma;
-
   if (_initError) {
     throw new Error(`Database initialization failed (cached): ${_initError}`);
   }
 
   try {
-    const pool = getPool();
-
-    // Try with driver adapter first
-    let prisma: PrismaClient;
-    try {
-      // @ts-ignore
-      const adapter = new PrismaPg(pool);
-      console.log("PrismaPg adapter created, provider:", (adapter as any).provider);
-      // @ts-ignore
-      prisma = new PrismaClient({ adapter });
-      console.log("Prisma client created with Pg adapter");
-    } catch (adapterErr: any) {
-      console.warn("PrismaPg adapter failed, falling back to default PrismaClient:", adapterErr?.message || adapterErr);
-      // Fallback: use default client without adapter
-      // Works when nodejs_compat flag enables native Postgres TCP
-      prisma = new PrismaClient({});
-      console.log("Prisma client created without adapter (fallback mode)");
-    }
-
+    // Edge runtime (WASM) handles the connection directly from DATABASE_URL.
+    // Do NOT pass `adapter`; it is mutually exclusive with /edge entry.
+    // @ts-ignore - validated at runtime
+    const prisma = new PrismaClient({
+      // Logging in development can be enabled here
+      // log: ['query', 'info', 'warn', 'error']
+    });
+    console.log("Prisma client initialized successfully (edge runtime, no adapter)");
     _prisma = prisma;
     return _prisma;
   } catch (error: any) {
@@ -106,8 +81,7 @@ export async function testConnection(): Promise<{
     const msg = error?.message || String(error) || "Unknown error";
     console.error("Database connection test failed:", msg);
     _prisma = null;
-    _initError = null; // Allow retry on next request
-
+    _initError = null;
     return {
       connected: false,
       message: `Database connection failed: ${msg}`,
@@ -116,13 +90,13 @@ export async function testConnection(): Promise<{
 }
 
 export async function disconnectDatabase() {
-  if (_pool) {
+  if (_prisma) {
     try {
-      await _pool.end();
+      // @ts-ignore
+      await _prisma.$disconnect();
     } catch (error) {
       console.error("Error disconnecting database:", error);
     }
-    _pool = null;
     _prisma = null;
     _initError = null;
   }
