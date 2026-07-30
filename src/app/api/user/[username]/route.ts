@@ -44,8 +44,11 @@ export async function GET(
     return NextResponse.json(user);
   } catch (error) {
     console.error("Fetch user error:", error);
+    const detail = error instanceof Error
+      ? error.message
+      : (error as any)?.message || JSON.stringify(error);
     return NextResponse.json(
-      { error: "获取用户信息失败", detail: error instanceof Error ? error.message : String(error) },
+      { error: "获取用户信息失败", detail },
       { status: 500 }
     );
   }
