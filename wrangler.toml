@@ -8,7 +8,7 @@ DATABASE_URL = "postgresql://postgres:kpeskSvkziU43W2d@db.wxaemtxkrryparukzdrv.s
 NEXTAUTH_SECRET = "ff62135641b6435fffdd9ed83580070b425ee277e352b679bf8048f32e50f9d5"
 NEXTAUTH_URL = "https://i-tv.2268310743.workers.dev"
 SUPABASE_URL = "https://wxaemtxkrryparukzdrv.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY = "YOUR_SUPABASE_SERVICE_ROLE_KEY_HERE"
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4YWVtdHhrcnJ5cGFydWt6ZHJ2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTI0NTcwMiwiZXhwIjoyMTAwODIxNzAyfQ.JtnLNNBOrw_mWTu8keMGLTQk7vInGyyOfLQMrM58Vh0"
 
 [assets]
 directory = ".open-next/assets"
