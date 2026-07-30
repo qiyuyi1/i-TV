@@ -169,7 +169,7 @@ export default function HomePage() {
         <div className="mb-5">
           <div className="glass rounded-2xl p-2 flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
-              <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-500" />
+              <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input
                 type="text"
                 placeholder="搜索影片名称..."

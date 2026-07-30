@@ -366,7 +366,7 @@ export default function UserProfilePage() {
   return (
     <div className="pt-20 pb-16 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="glass-strong rounded-2xl p-6 md:p-8 mb-6">
+        <div className="liquid-glass rounded-2xl p-6 md:p-8 mb-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg">
               {user.username.charAt(0).toUpperCase()}

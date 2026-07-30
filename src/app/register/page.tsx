@@ -42,7 +42,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 pt-20">
       <div className="w-full max-w-md">
-        <div className="glass rounded-2xl p-8">
+        <div className="glass-strong rounded-2xl p-8">
           <h1 className="text-2xl font-bold text-white mb-6 text-center">
             注册账号
           </h1>

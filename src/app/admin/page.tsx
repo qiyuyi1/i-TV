@@ -165,7 +165,7 @@ export default function AdminPage() {
   if (!session) {
     return (
       <div className="pt-20 min-h-screen flex items-center justify-center">
-        <div className="text-center glass rounded-2xl p-8 max-w-md">
+        <div className="text-center glass-strong rounded-2xl p-8 max-w-md">
           <div className="text-6xl mb-4">🔐</div>
           <h1 className="text-2xl text-white mb-2">请先登录</h1>
           <p className="text-gray-400 mb-4">登录后可申请成为首个站长</p>
@@ -192,7 +192,7 @@ export default function AdminPage() {
             </p>
           </div>
 
-          <div className="glass rounded-2xl p-6 mb-6">
+          <div className="glass-strong rounded-2xl p-6 mb-6">
             <div className="flex items-start gap-3 mb-4">
               <div className="text-2xl">⚡</div>
               <div>
@@ -261,7 +261,7 @@ export default function AdminPage() {
           </p>
         </div>
 
-        <div className="glass rounded-2xl p-6 mb-6">
+        <div className="liquid-glass rounded-2xl p-6 mb-6">
           <h2 className="text-xl font-semibold text-white mb-4">
             👤 查询用户
           </h2>
