@@ -45,7 +45,7 @@ export async function GET(
   } catch (error) {
     console.error("Fetch user error:", error);
     return NextResponse.json(
-      { error: "获取用户信息失败" },
+      { error: "获取用户信息失败", detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
