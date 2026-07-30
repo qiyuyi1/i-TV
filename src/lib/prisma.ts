@@ -261,6 +261,8 @@ function toDbRow(
   for (const [key, value] of Object.entries(data)) {
     const sqlCol = columns[key] || key;
     result[sqlCol] = value;
+    // Also write to the old camelCase column for backward compatibility
+    result[key] = value;
   }
   return result;
 }
@@ -873,7 +875,14 @@ class CommentModel {
       data.id = cuid();
     }
 
-    const dbRow = toDbRow(data, COMMENT_COLUMNS);
+    // Only use snake_case columns for comments table to avoid
+    // writing to non-existent camelCase columns
+    const dbRow: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      const sqlCol = COMMENT_COLUMNS[key] || key;
+      dbRow[sqlCol] = value;
+    }
+
     const supabase = getSupabase();
 
     const { data: result, error } = await supabase
@@ -898,7 +907,12 @@ class CommentModel {
     const { where, data } = args;
     const supabase = getSupabase();
 
-    const dbRow = toDbRow(data, COMMENT_COLUMNS);
+    // Only use snake_case columns for comments table
+    const dbRow: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      const sqlCol = COMMENT_COLUMNS[key] || key;
+      dbRow[sqlCol] = value;
+    }
     delete dbRow.id;
 
     let query = supabase.from("comments").update(dbRow).select("*");
