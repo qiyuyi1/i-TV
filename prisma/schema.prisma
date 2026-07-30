@@ -18,6 +18,7 @@ model User {
   title       String?
   isOwner     Boolean   @default(false)
   isSuperAdmin Boolean  @default(false)
+  lastLoginXp String?
   createdAt   DateTime  @default(now())
   resources   Resource[]
   links       ResourceLink[]
@@ -45,6 +46,7 @@ model Resource {
   type           String   @default("movie")
   genres         String?
   rating         Float?
+  country        String?
   currentEpisode String?
   totalEpisodes  String?
   status         String?

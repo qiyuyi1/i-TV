@@ -14,6 +14,7 @@ const USER_COLUMNS: Record<string, string> = {
   title: "title",
   isOwner: "is_owner",
   isSuperAdmin: "is_super_admin",
+  lastLoginXp: "last_login_xp",
   createdAt: "created_at",
 };
 
@@ -33,6 +34,7 @@ const RESOURCE_COLUMNS: Record<string, string> = {
   totalEpisodes: "total_episodes",
   status: "status",
   notes: "notes",
+  country: "country",
   createdAt: "created_at",
   updatedAt: "updated_at",
   createdById: "created_by_id",

@@ -165,7 +165,7 @@ export default function ResourceDetailPage() {
   };
 
   const handleDeleteLink = async (linkId: string) => {
-    if (!confirm("确定删除这个链接吗？删除将扣除添加者 5 XP。")) return;
+    if (!confirm("确定删除这个链接吗？")) return;
 
     await fetch(`/api/resources/${params.id}/links/${linkId}`, {
       method: "DELETE",
@@ -544,7 +544,7 @@ export default function ResourceDetailPage() {
               {(resource.links || []).length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {(resource.links || []).map((link) => (
-                    <div key={link.id} className="relative">
+                    <div key={link.id} className="relative z-30">
                       <a
                         href={link.url}
                         target="_blank"
@@ -571,20 +571,20 @@ export default function ResourceDetailPage() {
                         </button>
                       )}
                       {openMenuLinkId === link.id && (
-                        <div className="absolute left-0 mt-1 z-20 glass rounded-lg py-1 min-w-[120px] shadow-xl">
+                        <div className="absolute left-0 mt-1 z-50 bg-gray-900/95 border border-white/20 rounded-lg py-1 min-w-[140px] shadow-xl backdrop-blur-sm">
                           <a
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-white/5"
+                            className="block px-3 py-1.5 text-sm text-gray-200 hover:text-white hover:bg-white/10"
                           >
                             打开链接
                           </a>
                           <button
                             onClick={() => handleDeleteLink(link.id)}
-                            className="block w-full text-left px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                            className="block w-full text-left px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/20"
                           >
-                            删除链接 (-5 XP)
+                            删除链接
                           </button>
                         </div>
                       )}

@@ -24,6 +24,7 @@ export default function AddResourcePage() {
     genres: "",
     totalEpisodes: "",
     status: "",
+    country: "",
   });
 
   const handleAddToDatabase = async () => {
@@ -52,6 +53,7 @@ export default function AddResourcePage() {
       rating: manualForm.rating ? parseFloat(manualForm.rating) : null,
       totalEpisodes: manualForm.totalEpisodes.trim() || null,
       status: manualForm.status.trim() || null,
+      country: manualForm.country.trim() || null,
     };
 
     try {
@@ -93,6 +95,7 @@ export default function AddResourcePage() {
       genres: "",
       totalEpisodes: "",
       status: "",
+      country: "",
     });
   };
 
@@ -217,6 +220,34 @@ export default function AddResourcePage() {
                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 placeholder="如：8.5"
               />
+            </div>
+            <div>
+              <label className="block text-gray-300 text-sm mb-1">
+                国家/地区
+              </label>
+              <select
+                value={manualForm.country}
+                onChange={(e) =>
+                  setManualForm({
+                    ...manualForm,
+                    country: e.target.value,
+                  })
+                }
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              >
+                <option value="" className="bg-gray-900 text-white">请选择</option>
+                <option value="中国大陆" className="bg-gray-900 text-white">🇨🇳 中国大陆</option>
+                <option value="中国香港" className="bg-gray-900 text-white">🇭🇰 中国香港</option>
+                <option value="中国台湾" className="bg-gray-900 text-white">🇹🇼 中国台湾</option>
+                <option value="美国" className="bg-gray-900 text-white">🇺🇸 美国</option>
+                <option value="韩国" className="bg-gray-900 text-white">🇰🇷 韩国</option>
+                <option value="日本" className="bg-gray-900 text-white">🇯🇵 日本</option>
+                <option value="英国" className="bg-gray-900 text-white">🇬🇧 英国</option>
+                <option value="法国" className="bg-gray-900 text-white">🇫🇷 法国</option>
+                <option value="德国" className="bg-gray-900 text-white">🇩🇪 德国</option>
+                <option value="泰国" className="bg-gray-900 text-white">🇹🇭 泰国</option>
+                <option value="其他" className="bg-gray-900 text-white">🌍 其他</option>
+              </select>
             </div>
             <div>
               <label className="block text-gray-300 text-sm mb-1">

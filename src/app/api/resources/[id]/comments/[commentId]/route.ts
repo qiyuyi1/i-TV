@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getLevelFromExperience, XP_RULES } from "@/lib/constants";
 
 export async function DELETE(
   request: Request,
@@ -37,21 +38,27 @@ export async function DELETE(
 
     // If someone else's comment is deleted by admin, deduct XP
     if (comment.userId !== userId) {
-      const commenter = await prisma.user.findUnique({
-        where: { id: comment.userId },
-      });
-
-      if (commenter) {
-        const newExperience = Math.max(0, commenter.experience - 5);
-        const newLevel = Math.max(1, Math.floor(newExperience / 200) + 1);
-
-        await prisma.user.update({
+      try {
+        const commenter = await prisma.user.findUnique({
           where: { id: comment.userId },
-          data: {
-            experience: newExperience,
-            level: newLevel,
-          },
         });
+
+        if (commenter) {
+          const xpDeduction = XP_RULES.COMMENT;
+          const currentExp = commenter.experience || 0;
+          const newExperience = Math.max(0, currentExp - xpDeduction);
+          const newLevel = Math.max(1, getLevelFromExperience(newExperience));
+
+          await prisma.user.update({
+            where: { id: comment.userId },
+            data: {
+              experience: newExperience,
+              level: newLevel,
+            },
+          });
+        }
+      } catch (xpError) {
+        console.error("Failed to deduct XP for comment deletion:", xpError);
       }
     }
 

@@ -2,17 +2,35 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getLevelFromExperience, XP_RULES } from "@/lib/constants";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
     const search = searchParams.get("search");
+    const country = searchParams.get("country");
+    const year = searchParams.get("year");
+    const minRating = searchParams.get("minRating");
+    const sortBy = searchParams.get("sortBy") || "createdAt";
+    const sortOrder = searchParams.get("sortOrder") || "desc";
 
     const where: any = {};
 
     if (type && type !== "all") {
       where.type = type;
+    }
+
+    if (country && country !== "all") {
+      where.country = country;
+    }
+
+    if (year && year !== "all") {
+      where.year = year;
+    }
+
+    if (minRating) {
+      where.rating = { gte: parseFloat(minRating) };
     }
 
     if (search) {
@@ -30,7 +48,7 @@ export async function GET(request: Request) {
           select: { username: true },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { [sortBy]: sortOrder },
     });
 
     return NextResponse.json(resources);
@@ -68,6 +86,7 @@ export async function POST(request: Request) {
       totalEpisodes,
       status,
       notes,
+      country,
     } = body;
 
     if (!tmdbId || !title) {
@@ -104,9 +123,50 @@ export async function POST(request: Request) {
         totalEpisodes,
         status,
         notes,
+        country: country || null,
         createdById: (session.user as any).id,
       },
     });
+
+    // Add XP for creating a new resource (+10, daily cap 100)
+    try {
+      const userId = (session.user as any).id;
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (user) {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+
+        const todayResourcesCount = await prisma.resource.count({
+          where: {
+            createdById: userId,
+            createdAt: { gte: startOfToday },
+          },
+        });
+
+        const xpPerResource = XP_RULES.CREATE_RESOURCE;
+        const dailyCap = XP_RULES.CREATE_RESOURCE_DAILY_CAP;
+        const todayEarned = todayResourcesCount * xpPerResource;
+
+        if (todayEarned < dailyCap) {
+          const remaining = Math.min(xpPerResource, dailyCap - todayEarned);
+          const newExperience = (user.experience || 0) + remaining;
+          const newLevel = getLevelFromExperience(newExperience);
+
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              experience: newExperience,
+              level: Math.min(newLevel, 999),
+            },
+          });
+        }
+      }
+    } catch (xpError) {
+      console.error("Failed to add XP for resource creation:", xpError);
+    }
 
     return NextResponse.json(resource, { status: 201 });
   } catch (error: any) {

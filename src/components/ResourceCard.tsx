@@ -12,6 +12,7 @@ interface ResourceCardProps {
     year?: string | null;
     type: string;
     rating?: number | null;
+    country?: string | null;
     currentEpisode?: string | null;
     totalEpisodes?: string | null;
     status?: string | null;
@@ -88,9 +89,14 @@ export default function ResourceCard({ resource }: ResourceCardProps) {
           <h3 className="text-white font-semibold text-sm truncate group-hover:text-blue-400 transition-colors">
             {resource.title}
           </h3>
-          {resource.year && (
-            <p className="text-gray-400 text-xs mt-0.5">{resource.year}</p>
-          )}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {resource.year && (
+              <span className="text-gray-400 text-xs">{resource.year}</span>
+            )}
+            {resource.country && (
+              <span className="text-gray-500 text-xs">· {resource.country}</span>
+            )}
+          </div>
         </div>
       </div>
     </Link>

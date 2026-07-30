@@ -73,6 +73,18 @@ export function getLevelFromExperience(experience: number): number {
   return Math.min(999, Math.floor(experience / 200) + 1);
 }
 
+// 经验值规则
+export const XP_RULES = {
+  CREATE_RESOURCE: 10,
+  CREATE_RESOURCE_DAILY_CAP: 100,
+  ADD_LINK: 30,
+  ADD_LINK_DAILY_CAP: 0, // 0表示无上限
+  COMMENT: 5,
+  COMMENT_DAILY_CAP: 50,
+  DAILY_LOGIN: 10,
+  LOGIN_XP_KEY: "lastLoginDate",
+};
+
 // 检查是否有管理用户权限
 export function canManageUsers(user: {
   role?: string;

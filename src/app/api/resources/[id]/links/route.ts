@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getLevelFromExperience } from "@/lib/constants";
+import { getLevelFromExperience, XP_RULES } from "@/lib/constants";
 
 export async function GET(
   request: Request,
@@ -65,23 +65,27 @@ export async function POST(
       },
     });
 
-    // Add 30 XP for adding a link
-    const userId = (session.user as any).id;
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (user) {
-      const newExperience = user.experience + 30;
-      const newLevel = getLevelFromExperience(newExperience);
-
-      await prisma.user.update({
+    // Add 30 XP for adding a link (no daily cap)
+    try {
+      const userId = (session.user as any).id;
+      const user = await prisma.user.findUnique({
         where: { id: userId },
-        data: {
-          experience: newExperience,
-          level: Math.min(newLevel, 999),
-        },
       });
+
+      if (user) {
+        const newExperience = (user.experience || 0) + XP_RULES.ADD_LINK;
+        const newLevel = getLevelFromExperience(newExperience);
+
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            experience: newExperience,
+            level: Math.min(newLevel, 999),
+          },
+        });
+      }
+    } catch (xpError) {
+      console.error("Failed to add XP for link creation:", xpError);
     }
 
     return NextResponse.json(link, { status: 201 });

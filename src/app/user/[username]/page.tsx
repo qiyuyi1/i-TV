@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { getUserTitle, getLevelFromExperience, getAssignableTitles } from "@/lib/constants";
+import { getUserTitle, getLevelFromExperience, getAssignableTitles, XP_RULES } from "@/lib/constants";
 import { getImageUrl } from "@/lib/image";
 
 interface UserProfile {
@@ -69,6 +69,116 @@ function TitleBadge({ title, level }: { title: string; level: number }) {
   );
 }
 
+function XPRulesCard() {
+  const rules = [
+    { action: "创建资源", xp: `+${XP_RULES.CREATE_RESOURCE} XP`, cap: `每日上限 ${XP_RULES.CREATE_RESOURCE_DAILY_CAP} XP`, icon: "📝", color: "from-blue-500 to-cyan-500" },
+    { action: "添加网盘链接", xp: `+${XP_RULES.ADD_LINK} XP`, cap: "无每日上限", icon: "🔗", color: "from-green-500 to-emerald-500" },
+    { action: "发表评论", xp: `+${XP_RULES.COMMENT} XP`, cap: `每日上限 ${XP_RULES.COMMENT_DAILY_CAP} XP`, icon: "💬", color: "from-purple-500 to-pink-500" },
+    { action: "每日登录", xp: `+${XP_RULES.DAILY_LOGIN} XP`, cap: "每天一次（不扣除）", icon: "🌅", color: "from-amber-500 to-orange-500" },
+  ];
+
+  return (
+    <div className="glass rounded-2xl p-6 mb-6">
+      <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+        <span>📊</span> 经验值规则
+        <span className="text-xs text-gray-400 ml-2 font-normal">每200经验值升一级</span>
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {rules.map((rule) => (
+          <div
+            key={rule.action}
+            className="glass glass-hover rounded-xl p-4 transition-all border border-white/5"
+          >
+            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${rule.color} flex items-center justify-center text-lg mb-3`}>
+              {rule.icon}
+            </div>
+            <div className="text-white font-medium text-sm mb-1">{rule.action}</div>
+            <div className="text-blue-400 font-bold text-lg">{rule.xp}</div>
+            <div className="text-gray-500 text-xs mt-1">{rule.cap}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
+        💡 温馨提示：若资源/链接/评论被管理员删除，相应经验值会被扣除。每日登录奖励不会被扣除。
+      </div>
+    </div>
+  );
+}
+
+function DailyLoginCard({ onClaim }: { onClaim: () => void }) {
+  const [alreadyClaimed, setAlreadyClaimed] = useState(true);
+  const [claiming, setClaiming] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    checkClaimStatus();
+  }, []);
+
+  const checkClaimStatus = async () => {
+    try {
+      const res = await fetch("/api/auth/daily-login");
+      if (res.ok) {
+        const data = await res.json();
+        setAlreadyClaimed(data.alreadyClaimed);
+      }
+    } catch {}
+  };
+
+  const handleClaim = async () => {
+    setClaiming(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/auth/daily-login", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && !data.alreadyClaimed) {
+          setAlreadyClaimed(true);
+          setMessage(`🎉 恭喜获得 ${data.xpAwarded} 经验值！`);
+          onClaim();
+        } else {
+          setMessage(data.message || "今日已领取");
+        }
+      }
+    } catch {
+      setMessage("领取失败");
+    }
+    setClaiming(false);
+    setTimeout(() => setMessage(""), 3000);
+  };
+
+  return (
+    <div className={`glass rounded-2xl p-6 mb-6 border ${alreadyClaimed ? "border-gray-600/30" : "border-amber-500/30"}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${alreadyClaimed ? "bg-gray-700/50" : "bg-gradient-to-br from-amber-500 to-orange-500"}`}>
+            🌅
+          </div>
+          <div>
+            <h3 className="text-white font-semibold">每日登录奖励</h3>
+            <p className="text-gray-400 text-sm">
+              {alreadyClaimed ? "今日已领取，明天再来哦~" : `今日可领取 +${XP_RULES.DAILY_LOGIN} 经验值`}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleClaim}
+          disabled={alreadyClaimed || claiming}
+          className={`px-6 py-2 rounded-xl font-medium transition-all ${
+            alreadyClaimed
+              ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+              : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-500/25"
+          }`}
+        >
+          {claiming ? "领取中..." : alreadyClaimed ? "已领取" : "领取奖励"}
+        </button>
+      </div>
+      {message && (
+        <div className="mt-3 text-center text-amber-300 text-sm">{message}</div>
+      )}
+    </div>
+  );
+}
+
 export default function UserProfilePage() {
   const params = useParams();
   const { data: session } = useSession();
@@ -123,6 +233,9 @@ export default function UserProfilePage() {
 
   const title = getUserTitle(user);
   const level = getLevelFromExperience(user.experience);
+  const nextLevelExp = level * 200;
+  const progressPercent = ((user.experience % 200) / 200) * 100;
+  const isOwnProfile = session?.user && (session.user as any).username === user.username;
   const isOwner = session?.user && (session.user as any).isOwner;
   const isSuperAdmin = session?.user && (session.user as any).isSuperAdmin;
   const canEditUser = isOwner || (isSuperAdmin && !user.isOwner && !user.isSuperAdmin);
@@ -178,8 +291,8 @@ export default function UserProfilePage() {
     <div className="pt-20 pb-16 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="glass rounded-2xl p-6 md:p-8 mb-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg">
               {user.username.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -209,8 +322,21 @@ export default function UserProfilePage() {
             </div>
           </div>
 
+          <div className="mb-4">
+            <div className="flex justify-between text-xs text-gray-400 mb-1">
+              <span>升级进度</span>
+              <span>{user.experience % 200} / 200 → LV{level + 1}</span>
+            </div>
+            <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+
           {canEditUser && user.username !== (session?.user as any)?.username && assignableTitles.length > 0 && (
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap mt-4">
               {assignableTitles.map((t) => (
                 <button
                   key={t.value === null ? "clear" : t.value}
@@ -231,6 +357,10 @@ export default function UserProfilePage() {
             </div>
           )}
         </div>
+
+        {isOwnProfile && <DailyLoginCard onClaim={fetchUser} />}
+
+        {isOwnProfile && <XPRulesCard />}
 
         <div className="glass rounded-2xl p-6 mb-6">
           <h2 className="text-xl font-semibold text-white mb-4">📦 添加的资源</h2>

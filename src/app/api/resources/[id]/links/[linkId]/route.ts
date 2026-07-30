@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getLevelFromExperience } from "@/lib/constants";
+import { getLevelFromExperience, XP_RULES } from "@/lib/constants";
 
 export async function DELETE(
   request: Request,
@@ -40,21 +40,27 @@ export async function DELETE(
 
     // If admin deletes someone else's link, deduct XP from the creator
     if (link.addedById && link.addedById !== userId && hasAdminAccess) {
-      const linkCreator = await prisma.user.findUnique({
-        where: { id: link.addedById },
-      });
-
-      if (linkCreator) {
-        const newExperience = Math.max(0, linkCreator.experience - 30);
-        const newLevel = Math.max(1, getLevelFromExperience(newExperience));
-
-        await prisma.user.update({
+      try {
+        const linkCreator = await prisma.user.findUnique({
           where: { id: link.addedById },
-          data: {
-            experience: newExperience,
-            level: newLevel,
-          },
         });
+
+        if (linkCreator) {
+          const xpDeduction = XP_RULES.ADD_LINK;
+          const currentExp = linkCreator.experience || 0;
+          const newExperience = Math.max(0, currentExp - xpDeduction);
+          const newLevel = Math.max(1, getLevelFromExperience(newExperience));
+
+          await prisma.user.update({
+            where: { id: link.addedById },
+            data: {
+              experience: newExperience,
+              level: newLevel,
+            },
+          });
+        }
+      } catch (xpError) {
+        console.error("Failed to deduct XP:", xpError);
       }
     }
 

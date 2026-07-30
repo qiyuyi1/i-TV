@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getLevelFromExperience, XP_RULES } from "@/lib/constants";
 
 export async function GET(
   request: Request,
@@ -145,6 +146,32 @@ export async function DELETE(
         { error: "无权删除此资源" },
         { status: 403 }
       );
+    }
+
+    // If admin deletes someone else's resource, deduct XP from the creator
+    if (resource.createdById && resource.createdById !== userId && hasAdminAccess) {
+      try {
+        const creator = await prisma.user.findUnique({
+          where: { id: resource.createdById },
+        });
+
+        if (creator) {
+          const xpDeduction = XP_RULES.CREATE_RESOURCE;
+          const currentExp = creator.experience || 0;
+          const newExperience = Math.max(0, currentExp - xpDeduction);
+          const newLevel = Math.max(1, getLevelFromExperience(newExperience));
+
+          await prisma.user.update({
+            where: { id: resource.createdById },
+            data: {
+              experience: newExperience,
+              level: newLevel,
+            },
+          });
+        }
+      } catch (xpError) {
+        console.error("Failed to deduct XP for resource deletion:", xpError);
+      }
     }
 
     await prisma.resource.delete({

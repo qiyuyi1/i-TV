@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getLevelFromExperience } from "@/lib/constants";
+import { getLevelFromExperience, XP_RULES } from "@/lib/constants";
 
 export async function GET(
   request: Request,
@@ -141,9 +141,8 @@ export async function POST(
       });
 
       if (user) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const startOfToday = today;
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
         const todayCommentsCount = await prisma.comment.count({
           where: {
@@ -152,9 +151,13 @@ export async function POST(
           },
         });
 
-        // Max 50 XP per day from comments (10 comments max)
-        if (todayCommentsCount <= 10) {
-          const newExperience = user.experience + 5;
+        const xpPerComment = XP_RULES.COMMENT;
+        const dailyCap = XP_RULES.COMMENT_DAILY_CAP;
+        const todayEarned = todayCommentsCount * xpPerComment;
+
+        if (todayEarned < dailyCap) {
+          const remaining = Math.min(xpPerComment, dailyCap - todayEarned);
+          const newExperience = (user.experience || 0) + remaining;
           const newLevel = getLevelFromExperience(newExperience);
 
           await prisma.user.update({
@@ -168,7 +171,6 @@ export async function POST(
       }
     } catch (xpError) {
       console.error("Failed to add experience:", xpError);
-      // Don't block comment creation if experience update fails
     }
 
     return NextResponse.json(comment, { status: 201 });
