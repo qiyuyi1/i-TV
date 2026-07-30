@@ -406,11 +406,11 @@ export default function ResourceDetailPage() {
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs">
+                    <span className="px-2 py-1 glass text-white rounded text-xs">
                       {getTypeLabel(resource.type)}
                     </span>
                     {resource.rating != null && (
-                      <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-xs">
+                      <span className="px-2 py-1 glass text-white rounded text-xs">
                         ★ {Number(resource.rating).toFixed(1)}
                       </span>
                     )}

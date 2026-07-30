@@ -130,7 +130,7 @@ export default function AddResourcePage() {
 
         <div className="liquid-glass rounded-2xl p-6 md:p-8">
           <div className="flex items-center gap-2 mb-6">
-            <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs">
+            <span className="px-2 py-1 glass text-white rounded text-xs">
               {getTypeLabel(finalType)}
             </span>
             <span className="text-gray-400 text-sm">手动创建</span>
