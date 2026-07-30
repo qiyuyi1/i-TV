@@ -1,4 +1,4 @@
-import { query, queryOne, queryAll } from "./db";
+import { getSupabase } from "./db";
 import type { Prisma } from "@prisma/client";
 
 // ---------------------------------------------------------------------------
@@ -58,6 +58,20 @@ const COMMENT_COLUMNS: Record<string, string> = {
   createdAt: "created_at",
 };
 
+// Reverse mapping for convenience
+function reverseMap(cols: Record<string, string>): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [camel, snake] of Object.entries(cols)) {
+    result[snake] = camel;
+  }
+  return result;
+}
+
+const USER_REVERSE = reverseMap(USER_COLUMNS);
+const RESOURCE_REVERSE = reverseMap(RESOURCE_COLUMNS);
+const RESOURCE_LINK_REVERSE = reverseMap(RESOURCE_LINK_COLUMNS);
+const COMMENT_REVERSE = reverseMap(COMMENT_COLUMNS);
+
 // ---------------------------------------------------------------------------
 // Helper: Generate Prisma-style IDs (cuid-like)
 // ---------------------------------------------------------------------------
@@ -66,137 +80,7 @@ function cuid(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: Convert a Prisma select/include object to SQL column list
-// ---------------------------------------------------------------------------
-function buildSelectColumns(
-  select?: Record<string, any>,
-  columns?: Record<string, string>
-): string[] | null {
-  if (!select || !columns) return null;
-  const result: string[] = [];
-  for (const [prismaField, sqlCol] of Object.entries(columns)) {
-    if (select[prismaField] === true) {
-      result.push(sqlCol);
-    }
-  }
-  return result.length > 0 ? result : null;
-}
-
-// ---------------------------------------------------------------------------
-// Helper: Convert Prisma where clause to SQL conditions + params
-// ---------------------------------------------------------------------------
-function buildWhere(
-  where: Record<string, any> | undefined,
-  columns: Record<string, string>
-): { sql: string; params: any[] } {
-  if (!where || Object.keys(where).length === 0) {
-    return { sql: "", params: [] };
-  }
-
-  const conditions: string[] = [];
-  const params: any[] = [];
-
-  for (const [key, value] of Object.entries(where)) {
-    if (key === "OR") {
-      // Handle OR: array of where objects
-      const orParts: string[] = [];
-      for (const orItem of value as Array<Record<string, any>>) {
-        const { sql: orSql, params: orParams } = buildWhere(orItem, columns);
-        if (orSql) {
-          orParts.push(`(${orSql})`);
-          params.push(...orParams);
-        }
-      }
-      if (orParts.length > 0) {
-        conditions.push(`(${orParts.join(" OR ")})`);
-      }
-      continue;
-    }
-
-    const sqlCol = columns[key] || key;
-
-    if (value === null) {
-      conditions.push(`${sqlCol} IS NULL`);
-    } else if (typeof value === "object" && value !== null) {
-      // Handle operators like { contains: "search" } or { gte: date }
-      for (const [op, opValue] of Object.entries(value)) {
-        switch (op) {
-          case "contains":
-            conditions.push(`${sqlCol} ILIKE $${params.length + 1}`);
-            params.push(`%${opValue}%`);
-            break;
-          case "startsWith":
-            conditions.push(`${sqlCol} ILIKE $${params.length + 1}`);
-            params.push(`${opValue}%`);
-            break;
-          case "endsWith":
-            conditions.push(`${sqlCol} ILIKE $${params.length + 1}`);
-            params.push(`%${opValue}`);
-            break;
-          case "equals":
-            if (opValue === null) {
-              conditions.push(`${sqlCol} IS NULL`);
-            } else {
-              conditions.push(`${sqlCol} = $${params.length + 1}`);
-              params.push(opValue);
-            }
-            break;
-          case "in":
-            conditions.push(`${sqlCol} = ANY($${params.length + 1})`);
-            params.push(opValue);
-            break;
-          case "gte":
-            conditions.push(`${sqlCol} >= $${params.length + 1}`);
-            params.push(opValue);
-            break;
-          case "gt":
-            conditions.push(`${sqlCol} > $${params.length + 1}`);
-            params.push(opValue);
-            break;
-          case "lte":
-            conditions.push(`${sqlCol} <= $${params.length + 1}`);
-            params.push(opValue);
-            break;
-          case "lt":
-            conditions.push(`${sqlCol} < $${params.length + 1}`);
-            params.push(opValue);
-            break;
-          default:
-            conditions.push(`${sqlCol} = $${params.length + 1}`);
-            params.push(opValue);
-        }
-      }
-    } else {
-      // Simple equality
-      conditions.push(`${sqlCol} = $${params.length + 1}`);
-      params.push(value);
-    }
-  }
-
-  return { sql: conditions.join(" AND "), params };
-}
-
-// ---------------------------------------------------------------------------
-// Helper: Convert Prisma orderBy to SQL ORDER BY
-// ---------------------------------------------------------------------------
-function buildOrderBy(
-  orderBy: Record<string, "asc" | "desc"> | Array<Record<string, "asc" | "desc">> | undefined,
-  columns: Record<string, string>
-): string {
-  if (!orderBy) return "";
-  const orderList = Array.isArray(orderBy) ? orderBy : [orderBy];
-  const parts: string[] = [];
-  for (const item of orderList) {
-    for (const [key, direction] of Object.entries(item)) {
-      const sqlCol = columns[key] || key;
-      parts.push(`${sqlCol} ${direction.toUpperCase()}`);
-    }
-  }
-  return parts.length > 0 ? `ORDER BY ${parts.join(", ")}` : "";
-}
-
-// ---------------------------------------------------------------------------
-// Helper: Map a DB row back to a Prisma-like object
+// Helper: Map a DB row (snake_case) back to a Prisma-like object (camelCase)
 // ---------------------------------------------------------------------------
 function mapRow(
   row: Record<string, any>,
@@ -219,82 +103,185 @@ function mapRows(
 }
 
 // ---------------------------------------------------------------------------
-// Helper: Build SELECT clause from select object
+// Helper: Convert Prisma select object to PostgREST select string
 // ---------------------------------------------------------------------------
-function buildSelectClause(
+function buildSelectString(
   select?: Record<string, any>,
   columns?: Record<string, string>
 ): string {
   if (!select || !columns) return "*";
-  const selected = buildSelectColumns(select, columns);
-  if (selected) {
-    return selected.join(", ");
+  const parts: string[] = [];
+  for (const [prismaField, sqlCol] of Object.entries(columns)) {
+    if (select[prismaField] === true) {
+      parts.push(sqlCol);
+    }
   }
-  return "*";
+  return parts.length > 0 ? parts.join(",") : "*";
 }
 
 // ---------------------------------------------------------------------------
-// Helper: Build SET clause for UPDATE
+// Helper: Apply Prisma where clause to a Supabase query builder
 // ---------------------------------------------------------------------------
-function buildSetClause(
-  data: Record<string, any>,
+function applyWhere(
+  query: any,
+  where: Record<string, any> | undefined,
   columns: Record<string, string>
-): { clause: string; params: any[] } {
-  const sets: string[] = [];
-  const params: any[] = [];
+): any {
+  if (!where || Object.keys(where).length === 0) return query;
 
-  for (const [key, value] of Object.entries(data)) {
-    if (key === "id") continue; // Can't update primary key
+  for (const [key, value] of Object.entries(where)) {
+    if (key === "OR") {
+      // Handle OR: array of where objects
+      const orParts: string[] = [];
+      for (const orItem of value as Array<Record<string, any>>) {
+        for (const [orKey, orValue] of Object.entries(orItem)) {
+          const sqlCol = columns[orKey] || orKey;
+          if (orValue === null) {
+            orParts.push(`${sqlCol}.is.null`);
+          } else if (typeof orValue === "object" && orValue !== null) {
+            for (const [op, opValue] of Object.entries(orValue)) {
+              orParts.push(`${sqlCol}.${opToPostgrest(op, opValue)}`);
+            }
+          } else {
+            orParts.push(`${sqlCol}.eq.${orValue}`);
+          }
+        }
+      }
+      if (orParts.length > 0) {
+        query = query.or(orParts.join(","));
+      }
+      continue;
+    }
+
     const sqlCol = columns[key] || key;
 
-    if (value === undefined) continue;
     if (value === null) {
-      sets.push(`${sqlCol} = NULL`);
-    } else if (value === true || value === false) {
-      sets.push(`${sqlCol} = $${params.length + 1}`);
-      params.push(value);
+      query = query.is(sqlCol, null);
+    } else if (typeof value === "object" && value !== null) {
+      // Handle operators like { contains: "search" } or { gte: date }
+      for (const [op, opValue] of Object.entries(value)) {
+        switch (op) {
+          case "contains":
+            query = query.ilike(sqlCol, `%${opValue}%`);
+            break;
+          case "startsWith":
+            query = query.ilike(sqlCol, `${opValue}%`);
+            break;
+          case "endsWith":
+            query = query.ilike(sqlCol, `%${opValue}`);
+            break;
+          case "equals":
+            if (opValue === null) {
+              query = query.is(sqlCol, null);
+            } else {
+              query = query.eq(sqlCol, opValue);
+            }
+            break;
+          case "in":
+            query = query.in(sqlCol, opValue);
+            break;
+          case "gte":
+            query = query.gte(sqlCol, opValue);
+            break;
+          case "gt":
+            query = query.gt(sqlCol, opValue);
+            break;
+          case "lte":
+            query = query.lte(sqlCol, opValue);
+            break;
+          case "lt":
+            query = query.lt(sqlCol, opValue);
+            break;
+          default:
+            query = query.eq(sqlCol, opValue);
+        }
+      }
     } else {
-      sets.push(`${sqlCol} = $${params.length + 1}`);
-      params.push(value);
+      // Simple equality
+      query = query.eq(sqlCol, value);
     }
   }
 
-  return { clause: sets.join(", "), params };
+  return query;
+}
+
+function opToPostgrest(op: string, value: any): string {
+  switch (op) {
+    case "contains":
+      return `ilike.%${value}%`;
+    case "startsWith":
+      return `ilike.${value}%`;
+    case "endsWith":
+      return `ilike.%${value}`;
+    case "equals":
+      return value === null ? "is.null" : `eq.${value}`;
+    case "in":
+      return `in.(${(value as any[]).join(",")})`;
+    case "gte":
+      return `gte.${value}`;
+    case "gt":
+      return `gt.${value}`;
+    case "lte":
+      return `lte.${value}`;
+    case "lt":
+      return `lt.${value}`;
+    default:
+      return `eq.${value}`;
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Helper: Build INSERT column list and values
+// Helper: Apply Prisma orderBy to a Supabase query builder
 // ---------------------------------------------------------------------------
-function buildInsertClause(
+function applyOrderBy(
+  query: any,
+  orderBy: Record<string, "asc" | "desc"> | Array<Record<string, "asc" | "desc">> | undefined,
+  columns: Record<string, string>
+): any {
+  if (!orderBy) return query;
+
+  const orderList = Array.isArray(orderBy) ? orderBy : [orderBy];
+  for (const item of orderList) {
+    for (const [key, direction] of Object.entries(item)) {
+      const sqlCol = columns[key] || key;
+      query = query.order(sqlCol, { ascending: direction === "asc" });
+    }
+  }
+  return query;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: Convert Prisma data object (camelCase) to DB object (snake_case)
+// ---------------------------------------------------------------------------
+function toDbRow(
   data: Record<string, any>,
   columns: Record<string, string>
-): { cols: string[]; placeholders: string[]; params: any[] } {
-  const cols: string[] = [];
-  const placeholders: string[] = [];
-  const params: any[] = [];
-
+): Record<string, any> {
+  const result: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
     const sqlCol = columns[key] || key;
-    cols.push(sqlCol);
-    placeholders.push(`$${params.length + 1}`);
-    params.push(value);
+    result[sqlCol] = value;
   }
-
-  return { cols, placeholders, params };
+  return result;
 }
 
 // ---------------------------------------------------------------------------
-// Include helpers: fetch related records
+// Include helpers: fetch related records (manual, no FK dependency)
 // ---------------------------------------------------------------------------
 async function includeResourcesForUser(userId: string, limit?: number): Promise<any[]> {
-  let sql = `SELECT id, title, type, poster_path, created_at FROM resources WHERE created_by_id = $1 ORDER BY created_at DESC`;
-  const params: any[] = [userId];
-  if (limit) {
-    sql += ` LIMIT $2`;
-    params.push(limit);
-  }
-  const rows = await queryAll(sql, params);
-  return rows.map((r) => ({
+  const supabase = getSupabase();
+  let query = supabase
+    .from("resources")
+    .select("id, title, type, poster_path, created_at")
+    .eq("created_by_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (limit) query = query.limit(limit);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data || []).map((r: any) => ({
     id: r.id,
     title: r.title,
     type: r.type,
@@ -304,19 +291,19 @@ async function includeResourcesForUser(userId: string, limit?: number): Promise<
 }
 
 async function includeLinksForUser(userId: string, limit?: number): Promise<any[]> {
-  let sql = `SELECT rl.id, rl.label, rl.url, rl.type, rl.quality, rl.resource_id, rl.created_at,
-                    r.id as res_id, r.title as res_title
-             FROM resource_links rl
-             LEFT JOIN resources r ON r.id = rl.resource_id
-             WHERE rl.added_by_id = $1
-             ORDER BY rl.created_at DESC`;
-  const params: any[] = [userId];
-  if (limit) {
-    sql += ` LIMIT $2`;
-    params.push(limit);
-  }
-  const rows = await queryAll(sql, params);
-  return rows.map((r) => ({
+  const supabase = getSupabase();
+  let query = supabase
+    .from("resource_links")
+    .select("id, label, url, type, quality, resource_id, created_at")
+    .eq("added_by_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (limit) query = query.limit(limit);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data || []).map((r: any) => ({
     id: r.id,
     label: r.label,
     url: r.url,
@@ -324,38 +311,38 @@ async function includeLinksForUser(userId: string, limit?: number): Promise<any[
     quality: r.quality,
     resourceId: r.resource_id,
     createdAt: r.created_at,
-    resource: r.res_id ? { id: r.res_id, title: r.res_title } : null,
   }));
 }
 
 async function includeCountsForUser(userId: string): Promise<any> {
-  const resourceCount = await queryOne(
-    "SELECT COUNT(*) as cnt FROM resources WHERE created_by_id = $1",
-    [userId]
-  );
-  const commentCount = await queryOne(
-    "SELECT COUNT(*) as cnt FROM comments WHERE user_id = $1",
-    [userId]
-  );
+  const supabase = getSupabase();
+
+  const [resourcesRes, commentsRes, linksRes] = await Promise.all([
+    supabase.from("resources").select("*", { count: "exact", head: true }).eq("created_by_id", userId),
+    supabase.from("comments").select("*", { count: "exact", head: true }).eq("user_id", userId),
+    supabase.from("resource_links").select("*", { count: "exact", head: true }).eq("added_by_id", userId),
+  ]);
+
   return {
     _count: {
-      resources: Number(resourceCount?.cnt || 0),
-      comments: Number(commentCount?.cnt || 0),
+      resources: resourcesRes.count || 0,
+      comments: commentsRes.count || 0,
+      links: linksRes.count || 0,
     },
   };
 }
 
 async function includeLinksForResource(resourceId: string): Promise<any[]> {
-  const rows = await queryAll(
-    `SELECT rl.id, rl.label, rl.url, rl.type, rl.quality, rl.resource_id, rl.created_at,
-            u.id as added_by_id, u.username as added_by_username
-     FROM resource_links rl
-     LEFT JOIN users u ON u.id = rl.added_by_id
-     WHERE rl.resource_id = $1
-     ORDER BY rl.created_at ASC`,
-    [resourceId]
-  );
-  return rows.map((r) => ({
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("resource_links")
+    .select("id, label, url, type, quality, resource_id, added_by_id, created_at")
+    .eq("resource_id", resourceId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  const links: any[] = (data || []).map((r: any) => ({
     id: r.id,
     label: r.label,
     url: r.url,
@@ -363,36 +350,58 @@ async function includeLinksForResource(resourceId: string): Promise<any[]> {
     quality: r.quality,
     resourceId: r.resource_id,
     createdAt: r.created_at,
-    addedBy: r.added_by_id
-      ? { id: r.added_by_id, username: r.added_by_username }
-      : null,
+    addedById: r.added_by_id,
   }));
+
+  // Fetch addedBy user info for each link
+  for (const link of links) {
+    if (link.addedById) {
+      const { data: user } = await supabase
+        .from("users")
+        .select("id, username")
+        .eq("id", link.addedById)
+        .single();
+      link.addedBy = user ? { id: user.id, username: user.username } : null;
+    } else {
+      link.addedBy = null;
+    }
+    delete link.addedById;
+  }
+
+  return links;
 }
 
 async function includeCreatedByForResource(createdById: string | null): Promise<any | null> {
   if (!createdById) return null;
-  const row = await queryOne(
-    "SELECT id, username FROM users WHERE id = $1",
-    [createdById]
-  );
-  return row ? { id: row.id, username: row.username } : null;
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, username")
+    .eq("id", createdById)
+    .single();
+
+  if (error || !data) return null;
+  return { id: data.id, username: data.username };
 }
 
 async function includeUserForComment(userId: string): Promise<any | null> {
-  const row = await queryOne(
-    "SELECT id, username, level, experience, title, role, is_owner, is_super_admin FROM users WHERE id = $1",
-    [userId]
-  );
-  if (!row) return null;
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, username, level, experience, title, role, is_owner, is_super_admin")
+    .eq("id", userId)
+    .single();
+
+  if (error || !data) return null;
   return {
-    id: row.id,
-    username: row.username,
-    level: row.level,
-    experience: row.experience,
-    title: row.title,
-    role: row.role,
-    isOwner: row.is_owner,
-    isSuperAdmin: row.is_super_admin,
+    id: data.id,
+    username: data.username,
+    level: data.level,
+    experience: data.experience,
+    title: data.title,
+    role: data.role,
+    isOwner: data.is_owner,
+    isSuperAdmin: data.is_super_admin,
   };
 }
 
@@ -402,42 +411,34 @@ async function includeUserForComment(userId: string): Promise<any | null> {
 class UserModel {
   async findUnique(args: { where: Record<string, any>; include?: any; select?: any }) {
     const { where, include, select } = args;
-    const { sql: whereSql, params } = buildWhere(where, USER_COLUMNS);
-    const selectClause = buildSelectClause(select, USER_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `SELECT ${selectClause} FROM users WHERE ${whereSql} LIMIT 1`,
-      params
-    );
+    const selectStr = buildSelectString(select, USER_COLUMNS);
+    let query = supabase.from("users").select(selectStr);
+    query = applyWhere(query, where, USER_COLUMNS);
+    query = query.limit(1);
 
-    if (!row) return null;
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data || data.length === 0) return null;
 
-    const user = mapRow(row, USER_COLUMNS);
+    const user = mapRow(data[0], USER_COLUMNS);
 
-    // Handle _count in select (e.g. select: { _count: { select: { resources: true } } })
+    // Handle _count in select
     if (select?._count) {
       const countSelect = select._count.select || select._count;
       const counts: Record<string, number> = {};
       if (countSelect.resources) {
-        const r = await queryOne(
-          "SELECT COUNT(*) as cnt FROM resources WHERE created_by_id = $1",
-          [user.id]
-        );
-        counts.resources = Number(r?.cnt || 0);
+        const c = await includeCountsForUser(user.id);
+        counts.resources = c._count.resources;
       }
       if (countSelect.comments) {
-        const r = await queryOne(
-          "SELECT COUNT(*) as cnt FROM comments WHERE user_id = $1",
-          [user.id]
-        );
-        counts.comments = Number(r?.cnt || 0);
+        const c = await includeCountsForUser(user.id);
+        counts.comments = c._count.comments;
       }
       if (countSelect.links) {
-        const r = await queryOne(
-          "SELECT COUNT(*) as cnt FROM resource_links WHERE added_by_id = $1",
-          [user.id]
-        );
-        counts.links = Number(r?.cnt || 0);
+        const c = await includeCountsForUser(user.id);
+        counts.links = c._count.links;
       }
       (user as any)._count = counts;
     }
@@ -461,17 +462,18 @@ class UserModel {
 
   async findFirst(args: { where?: Record<string, any>; select?: any }) {
     const { where, select } = args;
-    const { sql: whereSql, params } = where
-      ? buildWhere(where, USER_COLUMNS)
-      : { sql: "1=1", params: [] };
-    const selectClause = buildSelectClause(select, USER_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `SELECT ${selectClause} FROM users WHERE ${whereSql} LIMIT 1`,
-      params
-    );
+    const selectStr = buildSelectString(select, USER_COLUMNS);
+    let query = supabase.from("users").select(selectStr);
+    query = applyWhere(query, where, USER_COLUMNS);
+    query = query.limit(1);
 
-    return row ? mapRow(row, USER_COLUMNS) : null;
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data || data.length === 0) return null;
+
+    return mapRow(data[0], USER_COLUMNS);
   }
 
   async create(args: { data: Record<string, any>; select?: any }) {
@@ -488,54 +490,57 @@ class UserModel {
     if (data.isOwner === undefined) data.isOwner = false;
     if (data.isSuperAdmin === undefined) data.isSuperAdmin = false;
 
-    const { cols, placeholders, params } = buildInsertClause(data, USER_COLUMNS);
-    const selectClause = buildSelectClause(select, USER_COLUMNS);
+    const dbRow = toDbRow(data, USER_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `INSERT INTO users (${cols.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING ${selectClause}`,
-      params
-    );
+    const selectStr = buildSelectString(select, USER_COLUMNS);
+    const { data: result, error } = await supabase
+      .from("users")
+      .insert(dbRow)
+      .select(selectStr)
+      .single();
 
-    if (!row) {
-      throw new Error("Failed to create user.");
-    }
+    if (error) throw error;
+    if (!result) throw new Error("Failed to create user.");
 
-    return mapRow(row, USER_COLUMNS);
+    return mapRow(result, USER_COLUMNS);
   }
 
   async update(args: { where: Record<string, any>; data: Record<string, any>; select?: any }) {
     const { where, data, select } = args;
-    const { sql: whereSql, params: whereParams } = buildWhere(where, USER_COLUMNS);
-    const { clause: setClause, params: setParams } = buildSetClause(data, USER_COLUMNS);
-    const selectClause = buildSelectClause(select, USER_COLUMNS);
+    const supabase = getSupabase();
 
-    const allParams = [...setParams, ...whereParams];
-    const row = await queryOne(
-      `UPDATE users SET ${setClause} WHERE ${whereSql} RETURNING ${selectClause}`,
-      allParams
-    );
+    const dbRow = toDbRow(data, USER_COLUMNS);
+    // Remove id from update data
+    delete dbRow.id;
 
-    if (!row) {
+    const selectStr = buildSelectString(select, USER_COLUMNS);
+    let query = supabase.from("users").update(dbRow).select(selectStr);
+    query = applyWhere(query, where, USER_COLUMNS);
+
+    const { data: result, error } = await query;
+
+    if (error) throw error;
+    if (!result || result.length === 0) {
       const err: any = new Error("Record to update not found.");
       err.code = "P2025";
       throw err;
     }
 
-    return mapRow(row, USER_COLUMNS);
+    return mapRow(result[0], USER_COLUMNS);
   }
 
   async count(args?: { where?: Record<string, any> }) {
     const where = args?.where;
-    const { sql: whereSql, params } = where
-      ? buildWhere(where, USER_COLUMNS)
-      : { sql: "", params: [] };
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `SELECT COUNT(*) as cnt FROM users${whereSql ? " WHERE " + whereSql : ""}`,
-      params
-    );
+    let query = supabase.from("users").select("*", { count: "exact", head: true });
+    query = applyWhere(query, where, USER_COLUMNS);
 
-    return Number(row?.cnt || 0);
+    const { count, error } = await query;
+    if (error) throw error;
+
+    return count || 0;
   }
 }
 
@@ -545,17 +550,18 @@ class UserModel {
 class ResourceModel {
   async findUnique(args: { where: Record<string, any>; include?: any; select?: any }) {
     const { where, include, select } = args;
-    const { sql: whereSql, params } = buildWhere(where, RESOURCE_COLUMNS);
-    const selectClause = buildSelectClause(select, RESOURCE_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `SELECT ${selectClause} FROM resources WHERE ${whereSql} LIMIT 1`,
-      params
-    );
+    const selectStr = buildSelectString(select, RESOURCE_COLUMNS);
+    let query = supabase.from("resources").select(selectStr);
+    query = applyWhere(query, where, RESOURCE_COLUMNS);
+    query = query.limit(1);
 
-    if (!row) return null;
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data || data.length === 0) return null;
 
-    const resource = mapRow(row, RESOURCE_COLUMNS);
+    const resource = mapRow(data[0], RESOURCE_COLUMNS);
 
     if (include) {
       if (include.links !== undefined) {
@@ -571,17 +577,19 @@ class ResourceModel {
 
   async findMany(args: { where?: Record<string, any>; include?: any; orderBy?: any; take?: number; skip?: number }) {
     const { where, include, orderBy, take, skip } = args;
-    const { sql: whereSql, params } = where
-      ? buildWhere(where, RESOURCE_COLUMNS)
-      : { sql: "", params: [] };
-    const orderSql = buildOrderBy(orderBy, RESOURCE_COLUMNS);
+    const supabase = getSupabase();
 
-    let sql = `SELECT * FROM resources${whereSql ? " WHERE " + whereSql : ""} ${orderSql}`;
-    if (take) sql += ` LIMIT ${take}`;
-    if (skip) sql += ` OFFSET ${skip}`;
+    let query = supabase.from("resources").select("*");
+    query = applyWhere(query, where, RESOURCE_COLUMNS);
+    query = applyOrderBy(query, orderBy, RESOURCE_COLUMNS);
 
-    const rows = await queryAll(sql, params);
-    const resources = rows.map((r) => mapRow(r, RESOURCE_COLUMNS));
+    if (skip) query = query.range(skip, skip + (take || 100) - 1);
+    else if (take) query = query.limit(take);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const resources = mapRows(data || [], RESOURCE_COLUMNS);
 
     if (include) {
       for (const resource of resources) {
@@ -604,69 +612,83 @@ class ResourceModel {
       data.id = cuid();
     }
 
-    const { cols, placeholders, params } = buildInsertClause(data, RESOURCE_COLUMNS);
-    const selectClause = buildSelectClause(select, RESOURCE_COLUMNS);
+    const dbRow = toDbRow(data, RESOURCE_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `INSERT INTO resources (${cols.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING ${selectClause}`,
-      params
-    );
+    const selectStr = buildSelectString(select, RESOURCE_COLUMNS);
+    const { data: result, error } = await supabase
+      .from("resources")
+      .insert(dbRow)
+      .select(selectStr)
+      .single();
 
-    if (!row) {
-      throw new Error("Failed to create resource.");
-    }
+    if (error) throw error;
+    if (!result) throw new Error("Failed to create resource.");
 
-    return mapRow(row, RESOURCE_COLUMNS);
+    return mapRow(result, RESOURCE_COLUMNS);
   }
 
   async update(args: { where: Record<string, any>; data: Record<string, any>; select?: any }) {
     const { where, data, select } = args;
-    const { sql: whereSql, params: whereParams } = buildWhere(where, RESOURCE_COLUMNS);
-    const { clause: setClause, params: setParams } = buildSetClause(data, RESOURCE_COLUMNS);
-    const selectClause = buildSelectClause(select, RESOURCE_COLUMNS);
+    const supabase = getSupabase();
 
-    const allParams = [...setParams, ...whereParams];
-    const row = await queryOne(
-      `UPDATE resources SET ${setClause} WHERE ${whereSql} RETURNING ${selectClause}`,
-      allParams
-    );
+    const dbRow = toDbRow(data, RESOURCE_COLUMNS);
+    delete dbRow.id;
 
-    if (!row) {
+    const selectStr = buildSelectString(select, RESOURCE_COLUMNS);
+    let query = supabase.from("resources").update(dbRow).select(selectStr);
+    query = applyWhere(query, where, RESOURCE_COLUMNS);
+
+    const { data: result, error } = await query;
+
+    if (error) throw error;
+    if (!result || result.length === 0) {
       const err: any = new Error("Record to update not found.");
       err.code = "P2025";
       throw err;
     }
 
-    return mapRow(row, RESOURCE_COLUMNS);
+    return mapRow(result[0], RESOURCE_COLUMNS);
   }
 
   async delete(args: { where: Record<string, any> }) {
     const { where } = args;
-    const { sql: whereSql, params } = buildWhere(where, RESOURCE_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(`SELECT * FROM resources WHERE ${whereSql}`, params);
-    if (!row) {
+    // First fetch the record to return it
+    let selectQuery = supabase.from("resources").select("*");
+    selectQuery = applyWhere(selectQuery, where, RESOURCE_COLUMNS);
+    selectQuery = selectQuery.limit(1);
+
+    const { data: existing, error: selectError } = await selectQuery;
+    if (selectError) throw selectError;
+    if (!existing || existing.length === 0) {
       const err: any = new Error("Record to delete not found.");
       err.code = "P2025";
       throw err;
     }
 
-    await query(`DELETE FROM resources WHERE ${whereSql}`, params);
-    return mapRow(row, RESOURCE_COLUMNS);
+    // Delete
+    let deleteQuery = supabase.from("resources").delete();
+    deleteQuery = applyWhere(deleteQuery, where, RESOURCE_COLUMNS);
+
+    const { error: deleteError } = await deleteQuery;
+    if (deleteError) throw deleteError;
+
+    return mapRow(existing[0], RESOURCE_COLUMNS);
   }
 
   async count(args?: { where?: Record<string, any> }) {
     const where = args?.where;
-    const { sql: whereSql, params } = where
-      ? buildWhere(where, RESOURCE_COLUMNS)
-      : { sql: "", params: [] };
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `SELECT COUNT(*) as cnt FROM resources${whereSql ? " WHERE " + whereSql : ""}`,
-      params
-    );
+    let query = supabase.from("resources").select("*", { count: "exact", head: true });
+    query = applyWhere(query, where, RESOURCE_COLUMNS);
 
-    return Number(row?.cnt || 0);
+    const { count, error } = await query;
+    if (error) throw error;
+
+    return count || 0;
   }
 }
 
@@ -676,40 +698,42 @@ class ResourceModel {
 class ResourceLinkModel {
   async findUnique(args: { where: Record<string, any> }) {
     const { where } = args;
-    const { sql: whereSql, params } = buildWhere(where, RESOURCE_LINK_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `SELECT * FROM resource_links WHERE ${whereSql} LIMIT 1`,
-      params
-    );
+    let query = supabase.from("resource_links").select("*");
+    query = applyWhere(query, where, RESOURCE_LINK_COLUMNS);
+    query = query.limit(1);
 
-    return row ? mapRow(row, RESOURCE_LINK_COLUMNS) : null;
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data || data.length === 0) return null;
+
+    return mapRow(data[0], RESOURCE_LINK_COLUMNS);
   }
 
   async findMany(args: { where?: Record<string, any>; include?: any; orderBy?: any }) {
     const { where, include, orderBy } = args;
-    const { sql: whereSql, params } = where
-      ? buildWhere(where, RESOURCE_LINK_COLUMNS)
-      : { sql: "", params: [] };
-    const orderSql = buildOrderBy(orderBy, RESOURCE_LINK_COLUMNS);
+    const supabase = getSupabase();
 
-    const rows = await queryAll(
-      `SELECT * FROM resource_links${whereSql ? " WHERE " + whereSql : ""} ${orderSql}`,
-      params
-    );
+    let query = supabase.from("resource_links").select("*");
+    query = applyWhere(query, where, RESOURCE_LINK_COLUMNS);
+    query = applyOrderBy(query, orderBy, RESOURCE_LINK_COLUMNS);
 
-    const links = rows.map((r) => mapRow(r, RESOURCE_LINK_COLUMNS));
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const links = mapRows(data || [], RESOURCE_LINK_COLUMNS);
 
     if (include) {
       for (const link of links) {
         if (include.addedBy !== undefined) {
-          const addedByRow = await queryOne(
-            "SELECT id, username FROM users WHERE id = $1",
-            [link.addedById]
-          );
-          link.addedBy = addedByRow
-            ? { id: addedByRow.id, username: addedByRow.username }
-            : null;
+          const supabase2 = getSupabase();
+          const { data: user } = await supabase2
+            .from("users")
+            .select("id, username")
+            .eq("id", link.addedById)
+            .single();
+          link.addedBy = user ? { id: user.id, username: user.username } : null;
         }
       }
     }
@@ -724,47 +748,59 @@ class ResourceLinkModel {
       data.id = cuid();
     }
 
-    const { cols, placeholders, params } = buildInsertClause(data, RESOURCE_LINK_COLUMNS);
+    const dbRow = toDbRow(data, RESOURCE_LINK_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `INSERT INTO resource_links (${cols.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING *`,
-      params
-    );
+    const { data: result, error } = await supabase
+      .from("resource_links")
+      .insert(dbRow)
+      .select("*")
+      .single();
 
-    if (!row) {
-      throw new Error("Failed to create resource link.");
-    }
+    if (error) throw error;
+    if (!result) throw new Error("Failed to create resource link.");
 
-    return mapRow(row, RESOURCE_LINK_COLUMNS);
+    return mapRow(result, RESOURCE_LINK_COLUMNS);
   }
 
   async delete(args: { where: Record<string, any> }) {
     const { where } = args;
-    const { sql: whereSql, params } = buildWhere(where, RESOURCE_LINK_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(`SELECT * FROM resource_links WHERE ${whereSql}`, params);
-    if (!row) {
+    // First fetch the record to return it
+    let selectQuery = supabase.from("resource_links").select("*");
+    selectQuery = applyWhere(selectQuery, where, RESOURCE_LINK_COLUMNS);
+    selectQuery = selectQuery.limit(1);
+
+    const { data: existing, error: selectError } = await selectQuery;
+    if (selectError) throw selectError;
+    if (!existing || existing.length === 0) {
       const err: any = new Error("Record to delete not found.");
       err.code = "P2025";
       throw err;
     }
 
-    await query(`DELETE FROM resource_links WHERE ${whereSql}`, params);
-    return mapRow(row, RESOURCE_LINK_COLUMNS);
+    // Delete
+    let deleteQuery = supabase.from("resource_links").delete();
+    deleteQuery = applyWhere(deleteQuery, where, RESOURCE_LINK_COLUMNS);
+
+    const { error: deleteError } = await deleteQuery;
+    if (deleteError) throw deleteError;
+
+    return mapRow(existing[0], RESOURCE_LINK_COLUMNS);
   }
 
   async count(args?: { where?: Record<string, any> }) {
     const where = args?.where;
-    const { sql: whereSql, params } = where
-      ? buildWhere(where, RESOURCE_LINK_COLUMNS)
-      : { sql: "", params: [] };
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `SELECT COUNT(*) as cnt FROM resource_links${whereSql ? " WHERE " + whereSql : ""}`,
-      params
-    );
+    let query = supabase.from("resource_links").select("*", { count: "exact", head: true });
+    query = applyWhere(query, where, RESOURCE_LINK_COLUMNS);
 
-    return Number(row?.cnt || 0);
+    const { count, error } = await query;
+    if (error) throw error;
+
+    return count || 0;
   }
 }
 
@@ -774,29 +810,31 @@ class ResourceLinkModel {
 class CommentModel {
   async findUnique(args: { where: Record<string, any> }) {
     const { where } = args;
-    const { sql: whereSql, params } = buildWhere(where, COMMENT_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `SELECT * FROM comments WHERE ${whereSql} LIMIT 1`,
-      params
-    );
+    let query = supabase.from("comments").select("*");
+    query = applyWhere(query, where, COMMENT_COLUMNS);
+    query = query.limit(1);
 
-    return row ? mapRow(row, COMMENT_COLUMNS) : null;
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data || data.length === 0) return null;
+
+    return mapRow(data[0], COMMENT_COLUMNS);
   }
 
   async findMany(args: { where?: Record<string, any>; include?: any; orderBy?: any }) {
     const { where, include, orderBy } = args;
-    const { sql: whereSql, params } = where
-      ? buildWhere(where, COMMENT_COLUMNS)
-      : { sql: "", params: [] };
-    const orderSql = buildOrderBy(orderBy, COMMENT_COLUMNS);
+    const supabase = getSupabase();
 
-    const rows = await queryAll(
-      `SELECT * FROM comments${whereSql ? " WHERE " + whereSql : ""} ${orderSql}`,
-      params
-    );
+    let query = supabase.from("comments").select("*");
+    query = applyWhere(query, where, COMMENT_COLUMNS);
+    query = applyOrderBy(query, orderBy, COMMENT_COLUMNS);
 
-    const comments = rows.map((r) => mapRow(r, COMMENT_COLUMNS));
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const comments = mapRows(data || [], COMMENT_COLUMNS);
 
     if (include) {
       for (const comment of comments) {
@@ -816,17 +854,19 @@ class CommentModel {
       data.id = cuid();
     }
 
-    const { cols, placeholders, params } = buildInsertClause(data, COMMENT_COLUMNS);
+    const dbRow = toDbRow(data, COMMENT_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `INSERT INTO comments (${cols.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING *`,
-      params
-    );
+    const { data: result, error } = await supabase
+      .from("comments")
+      .insert(dbRow)
+      .select("*")
+      .single();
 
-    if (!row) {
-      throw new Error("Failed to create comment.");
-    }
-    const comment = mapRow(row, COMMENT_COLUMNS);
+    if (error) throw error;
+    if (!result) throw new Error("Failed to create comment.");
+
+    const comment = mapRow(result, COMMENT_COLUMNS);
 
     if (include && include.user !== undefined) {
       comment.user = await includeUserForComment(comment.userId);
@@ -837,51 +877,64 @@ class CommentModel {
 
   async update(args: { where: Record<string, any>; data: Record<string, any> }) {
     const { where, data } = args;
-    const { sql: whereSql, params: whereParams } = buildWhere(where, COMMENT_COLUMNS);
-    const { clause: setClause, params: setParams } = buildSetClause(data, COMMENT_COLUMNS);
+    const supabase = getSupabase();
 
-    const allParams = [...setParams, ...whereParams];
-    const row = await queryOne(
-      `UPDATE comments SET ${setClause} WHERE ${whereSql} RETURNING *`,
-      allParams
-    );
+    const dbRow = toDbRow(data, COMMENT_COLUMNS);
+    delete dbRow.id;
 
-    if (!row) {
+    let query = supabase.from("comments").update(dbRow).select("*");
+    query = applyWhere(query, where, COMMENT_COLUMNS);
+
+    const { data: result, error } = await query;
+
+    if (error) throw error;
+    if (!result || result.length === 0) {
       const err: any = new Error("Record to update not found.");
       err.code = "P2025";
       throw err;
     }
 
-    return mapRow(row, COMMENT_COLUMNS);
+    return mapRow(result[0], COMMENT_COLUMNS);
   }
 
   async delete(args: { where: Record<string, any> }) {
     const { where } = args;
-    const { sql: whereSql, params } = buildWhere(where, COMMENT_COLUMNS);
+    const supabase = getSupabase();
 
-    const row = await queryOne(`SELECT * FROM comments WHERE ${whereSql}`, params);
-    if (!row) {
+    // First fetch the record to return it
+    let selectQuery = supabase.from("comments").select("*");
+    selectQuery = applyWhere(selectQuery, where, COMMENT_COLUMNS);
+    selectQuery = selectQuery.limit(1);
+
+    const { data: existing, error: selectError } = await selectQuery;
+    if (selectError) throw selectError;
+    if (!existing || existing.length === 0) {
       const err: any = new Error("Record to delete not found.");
       err.code = "P2025";
       throw err;
     }
 
-    await query(`DELETE FROM comments WHERE ${whereSql}`, params);
-    return mapRow(row, COMMENT_COLUMNS);
+    // Delete
+    let deleteQuery = supabase.from("comments").delete();
+    deleteQuery = applyWhere(deleteQuery, where, COMMENT_COLUMNS);
+
+    const { error: deleteError } = await deleteQuery;
+    if (deleteError) throw deleteError;
+
+    return mapRow(existing[0], COMMENT_COLUMNS);
   }
 
   async count(args?: { where?: Record<string, any> }) {
     const where = args?.where;
-    const { sql: whereSql, params } = where
-      ? buildWhere(where, COMMENT_COLUMNS)
-      : { sql: "", params: [] };
+    const supabase = getSupabase();
 
-    const row = await queryOne(
-      `SELECT COUNT(*) as cnt FROM comments${whereSql ? " WHERE " + whereSql : ""}`,
-      params
-    );
+    let query = supabase.from("comments").select("*", { count: "exact", head: true });
+    query = applyWhere(query, where, COMMENT_COLUMNS);
 
-    return Number(row?.cnt || 0);
+    const { count, error } = await query;
+    if (error) throw error;
+
+    return count || 0;
   }
 }
 
@@ -905,7 +958,7 @@ let _prisma: PrismaDb | null = null;
 export function getPrismaClient(): PrismaDb {
   if (_prisma) return _prisma;
   _prisma = new PrismaDb();
-  console.log("Prisma client initialized successfully (pg driver, no adapter)");
+  console.log("Prisma client initialized successfully (Supabase PostgREST API)");
   return _prisma;
 }
 
