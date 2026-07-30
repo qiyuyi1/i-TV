@@ -12,30 +12,30 @@ const USER_COLUMNS: Record<string, string> = {
   level: "level",
   experience: "experience",
   title: "title",
-  isOwner: "is_owner",
-  isSuperAdmin: "is_super_admin",
-  createdAt: "created_at",
+  isOwner: "isOwner",
+  isSuperAdmin: "isSuperAdmin",
+  createdAt: "createdAt",
 };
 
 const RESOURCE_COLUMNS: Record<string, string> = {
   id: "id",
-  tmdbId: "tmdb_id",
+  tmdbId: "tmdbId",
   title: "title",
-  originalTitle: "original_title",
-  posterPath: "poster_path",
-  backdropPath: "backdrop_path",
+  originalTitle: "originalTitle",
+  posterPath: "posterPath",
+  backdropPath: "backdropPath",
   overview: "overview",
   year: "year",
   type: "type",
   genres: "genres",
   rating: "rating",
-  currentEpisode: "current_episode",
-  totalEpisodes: "total_episodes",
+  currentEpisode: "currentEpisode",
+  totalEpisodes: "totalEpisodes",
   status: "status",
   notes: "notes",
-  createdAt: "created_at",
-  updatedAt: "updated_at",
-  createdById: "created_by_id",
+  createdAt: "createdAt",
+  updatedAt: "updatedAt",
+  createdById: "createdById",
 };
 
 const RESOURCE_LINK_COLUMNS: Record<string, string> = {
@@ -44,18 +44,18 @@ const RESOURCE_LINK_COLUMNS: Record<string, string> = {
   url: "url",
   type: "type",
   quality: "quality",
-  resourceId: "resource_id",
-  addedById: "added_by_id",
-  createdAt: "created_at",
+  resourceId: "resourceId",
+  addedById: "addedById",
+  createdAt: "createdAt",
 };
 
 const COMMENT_COLUMNS: Record<string, string> = {
   id: "id",
   content: "content",
-  userId: "user_id",
-  resourceId: "resource_id",
-  isPinned: "is_pinned",
-  createdAt: "created_at",
+  userId: "userId",
+  resourceId: "resourceId",
+  isPinned: "isPinned",
+  createdAt: "createdAt",
 };
 
 // Reverse mapping for convenience
@@ -272,9 +272,9 @@ async function includeResourcesForUser(userId: string, limit?: number): Promise<
   const supabase = getSupabase();
   let query = supabase
     .from("resources")
-    .select("id, title, type, poster_path, created_at")
-    .eq("created_by_id", userId)
-    .order("created_at", { ascending: false });
+    .select("id, title, type, posterPath, createdAt")
+    .eq("createdById", userId)
+    .order("createdAt", { ascending: false });
 
   if (limit) query = query.limit(limit);
 
@@ -285,8 +285,8 @@ async function includeResourcesForUser(userId: string, limit?: number): Promise<
     id: r.id,
     title: r.title,
     type: r.type,
-    posterPath: r.poster_path,
-    createdAt: r.created_at,
+    posterPath: r.posterPath,
+    createdAt: r.createdAt,
   }));
 }
 
@@ -294,9 +294,9 @@ async function includeLinksForUser(userId: string, limit?: number, includeResour
   const supabase = getSupabase();
   let query = supabase
     .from("resource_links")
-    .select("id, label, url, type, quality, resource_id, added_by_id, created_at")
-    .eq("added_by_id", userId)
-    .order("created_at", { ascending: false });
+    .select("id, label, url, type, quality, resourceId, addedById, createdAt")
+    .eq("addedById", userId)
+    .order("createdAt", { ascending: false });
 
   if (limit) query = query.limit(limit);
 
@@ -309,8 +309,8 @@ async function includeLinksForUser(userId: string, limit?: number, includeResour
     url: r.url,
     type: r.type,
     quality: r.quality,
-    resourceId: r.resource_id,
-    createdAt: r.created_at,
+    resourceId: r.resourceId,
+    createdAt: r.createdAt,
   }));
 
   // If includeResource is requested, fetch resource info for each link
@@ -336,9 +336,9 @@ async function includeCountsForUser(userId: string): Promise<any> {
   const supabase = getSupabase();
 
   const [resourcesRes, commentsRes, linksRes] = await Promise.all([
-    supabase.from("resources").select("*", { count: "exact", head: true }).eq("created_by_id", userId),
-    supabase.from("comments").select("*", { count: "exact", head: true }).eq("user_id", userId),
-    supabase.from("resource_links").select("*", { count: "exact", head: true }).eq("added_by_id", userId),
+    supabase.from("resources").select("*", { count: "exact", head: true }).eq("createdById", userId),
+    supabase.from("comments").select("*", { count: "exact", head: true }).eq("userId", userId),
+    supabase.from("resource_links").select("*", { count: "exact", head: true }).eq("addedById", userId),
   ]);
 
   return {
@@ -354,9 +354,9 @@ async function includeLinksForResource(resourceId: string): Promise<any[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("resource_links")
-    .select("id, label, url, type, quality, resource_id, added_by_id, created_at")
-    .eq("resource_id", resourceId)
-    .order("created_at", { ascending: true });
+    .select("id, label, url, type, quality, resourceId, addedById, createdAt")
+    .eq("resourceId", resourceId)
+    .order("createdAt", { ascending: true });
 
   if (error) throw error;
 
@@ -366,9 +366,9 @@ async function includeLinksForResource(resourceId: string): Promise<any[]> {
     url: r.url,
     type: r.type,
     quality: r.quality,
-    resourceId: r.resource_id,
-    createdAt: r.created_at,
-    addedById: r.added_by_id,
+    resourceId: r.resourceId,
+    createdAt: r.createdAt,
+    addedById: r.addedById,
   }));
 
   // Fetch addedBy user info for each link
@@ -406,7 +406,7 @@ async function includeUserForComment(userId: string): Promise<any | null> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("users")
-    .select("id, username, level, experience, title, role, is_owner, is_super_admin")
+    .select("id, username, level, experience, title, role, isOwner, isSuperAdmin")
     .eq("id", userId)
     .single();
 
@@ -418,8 +418,8 @@ async function includeUserForComment(userId: string): Promise<any | null> {
     experience: data.experience,
     title: data.title,
     role: data.role,
-    isOwner: data.is_owner,
-    isSuperAdmin: data.is_super_admin,
+    isOwner: data.isOwner,
+    isSuperAdmin: data.isSuperAdmin,
   };
 }
 
