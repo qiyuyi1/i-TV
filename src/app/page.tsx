@@ -63,7 +63,7 @@ export default function HomePage() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">i帅TV</h1>
           <p className="text-gray-400">
-            发现和分享精彩的电影、剧集、综艺、纪录等资源
+            非常强力的资源站
           </p>
         </div>
 

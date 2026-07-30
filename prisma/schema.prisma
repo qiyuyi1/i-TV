@@ -81,6 +81,9 @@ model Comment {
   user       User     @relation(fields: [userId], references: [id])
   resourceId String
   resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  parentId   String?  @db.Text
+  parent     Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[] @relation("CommentReplies")
   isPinned   Boolean  @default(false)
   createdAt  DateTime @default(now())
 

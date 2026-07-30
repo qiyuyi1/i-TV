@@ -43,21 +43,25 @@ interface Resource {
   createdBy?: { id: string; username: string } | null;
 }
 
+interface CommentUser {
+  id: string;
+  username: string;
+  level: number;
+  experience: number;
+  title: string | null;
+  role: string;
+  isOwner: boolean;
+  isSuperAdmin: boolean;
+}
+
 interface Comment {
   id: string;
   content: string;
   isPinned: boolean;
   createdAt: string;
-  user: {
-    id: string;
-    username: string;
-    level: number;
-    experience: number;
-    title: string | null;
-    role: string;
-    isOwner: boolean;
-    isSuperAdmin: boolean;
-  };
+  parentId?: string | null;
+  user: CommentUser;
+  replies?: Comment[];
 }
 
 const statusOptions = ["更新中", "已完结", "待更新"];
@@ -90,6 +94,7 @@ export default function ResourceDetailPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [showCommentForm, setShowCommentForm] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
   const [openMenuLinkId, setOpenMenuLinkId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -202,10 +207,15 @@ export default function ResourceDetailPage() {
     setSubmittingComment(true);
 
     try {
+      const body: Record<string, any> = { content: newComment.trim() };
+      if (replyingTo) {
+        body.parentId = replyingTo.id;
+      }
+
       const res = await fetch(`/api/resources/${params.id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newComment.trim() }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -213,6 +223,7 @@ export default function ResourceDetailPage() {
       if (res.ok) {
         setNewComment("");
         setShowCommentForm(false);
+        setReplyingTo(null);
         fetchComments();
       } else {
         setCommentError(data.error || "评论发送失败");
@@ -841,11 +852,16 @@ export default function ResourceDetailPage() {
         <div className="mt-6 glass rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-white">
-              评论 ({comments.length})
+              评论 ({comments.reduce((sum, c) => sum + 1 + ((c as any).replies?.length || 0), 0)})
             </h2>
             {session && (
               <button
-                onClick={() => setShowCommentForm(!showCommentForm)}
+                onClick={() => {
+                  setShowCommentForm(!showCommentForm);
+                  if (!showCommentForm) {
+                    setReplyingTo(null);
+                  }
+                }}
                 className="text-blue-400 hover:text-blue-300 text-sm"
               >
                 {showCommentForm ? "取消" : "+ 发表评论"}
@@ -860,12 +876,24 @@ export default function ResourceDetailPage() {
                   {commentError}
                 </div>
               )}
+              {replyingTo && (
+                <div className="mb-2 px-3 py-2 bg-blue-500/10 text-blue-300 rounded-lg text-sm flex items-center justify-between">
+                  <span>正在回复 @{replyingTo.user.username}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setReplyingTo(null); setShowCommentForm(false); }}
+                    className="text-blue-400 hover:text-blue-300"
+                  >
+                    取消回复
+                  </button>
+                </div>
+              )}
               <textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
                 rows={3}
-                placeholder="写下你的评论... (最多500字)"
+                placeholder={replyingTo ? `回复 @${replyingTo.user.username}...` : "写下你的评论... (最多500字)"}
                 maxLength={500}
                 disabled={submittingComment}
               />
@@ -878,7 +906,7 @@ export default function ResourceDetailPage() {
                   disabled={!newComment.trim() || submittingComment}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
                 >
-                  {submittingComment ? "发送中..." : "发送评论"}
+                  {submittingComment ? "发送中..." : (replyingTo ? "发送回复" : "发送评论")}
                 </button>
               </div>
             </form>
@@ -906,6 +934,7 @@ export default function ResourceDetailPage() {
                 const isOwner = sessionUser?.id === comment.user.id;
                 const canDeleteComment = isOwner || canAdminAction;
                 const canPinComment = canAdminAction;
+                const replies = (comment as any).replies || [];
 
                 return (
                   <div
@@ -962,6 +991,60 @@ export default function ResourceDetailPage() {
                     <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap break-words">
                       {comment.content}
                     </p>
+                    {session && (
+                      <div className="mt-2">
+                        <button
+                          onClick={() => {
+                            setReplyingTo(comment);
+                            setShowCommentForm(true);
+                          }}
+                          className="text-xs text-gray-500 hover:text-blue-400 transition-colors"
+                        >
+                          回复
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Replies */}
+                    {replies.length > 0 && (
+                      <div className="mt-3 pl-4 border-l-2 border-white/10 space-y-3">
+                        {replies.map((reply: Comment) => {
+                          const replyIsOwner = sessionUser?.id === reply.user.id;
+                          const canDeleteReply = replyIsOwner || canAdminAction;
+                          return (
+                            <div key={reply.id} className="glass rounded-lg p-3 bg-white/[0.02]">
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                  <Link
+                                    href={`/user/${reply.user.username}`}
+                                    className="text-white text-sm font-medium hover:text-blue-400 transition-colors"
+                                  >
+                                    {reply.user.username}
+                                  </Link>
+                                  {getCommentUserBadge(reply.user)}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-500 text-xs">
+                                    {new Date(reply.createdAt).toLocaleString("zh-CN")}
+                                  </span>
+                                  {canDeleteReply && (
+                                    <button
+                                      onClick={() => handleDeleteComment(reply.id)}
+                                      className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                                    >
+                                      删除
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                {reply.content}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}

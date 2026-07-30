@@ -54,6 +54,7 @@ const COMMENT_COLUMNS: Record<string, string> = {
   content: "content",
   userId: "user_id",
   resourceId: "resource_id",
+  parentId: "parent_id",
   isPinned: "is_pinned",
   createdAt: "created_at",
 };
@@ -879,6 +880,7 @@ class CommentModel {
     // writing to non-existent camelCase columns
     const dbRow: Record<string, any> = {};
     for (const [key, value] of Object.entries(data)) {
+      if (value === undefined || value === null) continue;
       const sqlCol = COMMENT_COLUMNS[key] || key;
       dbRow[sqlCol] = value;
     }

@@ -13,7 +13,7 @@ export async function GET(
       where: { resourceId: params.id },
       orderBy: [
         { isPinned: "desc" },
-        { createdAt: "desc" },
+        { createdAt: "asc" },
       ],
       include: {
         user: {
@@ -31,7 +31,16 @@ export async function GET(
       },
     });
 
-    return NextResponse.json(comments);
+    // Nest comments: top-level first, then replies
+    const topLevel = comments.filter((c: any) => !c.parentId);
+    const replies = comments.filter((c: any) => c.parentId);
+
+    const result = topLevel.map((comment: any) => ({
+      ...comment,
+      replies: replies.filter((r: any) => r.parentId === comment.id),
+    }));
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Fetch comments error:", error);
     return NextResponse.json(
@@ -52,7 +61,7 @@ export async function POST(
       return NextResponse.json({ error: "请先登录" }, { status: 401 });
     }
 
-    const { content } = await request.json();
+    const { content, parentId } = await request.json();
 
     if (!content || content.trim().length === 0) {
       return NextResponse.json(
@@ -76,14 +85,39 @@ export async function POST(
       return NextResponse.json({ error: "资源不存在" }, { status: 404 });
     }
 
+    // If replying, verify parent comment exists and belongs to same resource
+    if (parentId) {
+      const parentComment = await prisma.comment.findUnique({
+        where: { id: parentId },
+      });
+      if (!parentComment || (parentComment as any).resourceId !== params.id) {
+        return NextResponse.json(
+          { error: "回复的评论不存在" },
+          { status: 404 }
+        );
+      }
+      // Don't allow replying to a reply (keep 1 level of nesting)
+      if ((parentComment as any).parentId) {
+        return NextResponse.json(
+          { error: "只能回复顶级评论" },
+          { status: 400 }
+        );
+      }
+    }
+
     const userId = (session.user as any)?.id;
 
+    const createData: Record<string, any> = {
+      content: content.trim(),
+      userId,
+      resourceId: params.id,
+    };
+    if (parentId) {
+      createData.parentId = parentId;
+    }
+
     const comment = await prisma.comment.create({
-      data: {
-        content: content.trim(),
-        userId,
-        resourceId: params.id,
-      },
+      data: createData,
       include: {
         user: {
           select: {
@@ -100,36 +134,41 @@ export async function POST(
       },
     });
 
-    // Add experience points for commenting
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (user) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const startOfToday = today;
-
-      const todayCommentsCount = await prisma.comment.count({
-        where: {
-          userId,
-          createdAt: { gte: startOfToday },
-        },
+    // Add experience points for commenting (non-blocking)
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
       });
 
-      // Max 50 XP per day from comments (10 comments max)
-      if (todayCommentsCount <= 10) {
-        const newExperience = user.experience + 5;
-        const newLevel = getLevelFromExperience(newExperience);
+      if (user) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startOfToday = today;
 
-        await prisma.user.update({
-          where: { id: userId },
-          data: {
-            experience: newExperience,
-            level: Math.min(newLevel, 999),
+        const todayCommentsCount = await prisma.comment.count({
+          where: {
+            userId,
+            createdAt: { gte: startOfToday },
           },
         });
+
+        // Max 50 XP per day from comments (10 comments max)
+        if (todayCommentsCount <= 10) {
+          const newExperience = user.experience + 5;
+          const newLevel = getLevelFromExperience(newExperience);
+
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              experience: newExperience,
+              level: Math.min(newLevel, 999),
+            },
+          });
+        }
       }
+    } catch (xpError) {
+      console.error("Failed to add experience:", xpError);
+      // Don't block comment creation if experience update fails
     }
 
     return NextResponse.json(comment, { status: 201 });
