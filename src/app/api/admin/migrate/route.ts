@@ -1,48 +1,50 @@
 import { NextResponse } from "next/server";
-import { Client } from "pg";
+import { getSupabase } from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
-    const client = new Client({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-    });
-
-    await client.connect();
+    const supabase = getSupabase();
 
     // Check if parent_id column already exists
-    const checkResult = await client.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'comments' AND column_name = 'parent_id'
-    `);
+    const { data, error } = await supabase
+      .from("comments")
+      .select("id, parent_id")
+      .limit(1);
 
-    if (checkResult.rows.length > 0) {
-      await client.end();
-      return NextResponse.json({ message: "parent_id column already exists" });
+    if (!error) {
+      // parent_id column exists (we got data without error)
+      return NextResponse.json({ 
+        success: true, 
+        message: "parent_id column already exists, reply feature is ready" 
+      });
     }
 
-    // Add parent_id column
-    await client.query(`
-      ALTER TABLE comments 
-      ADD COLUMN parent_id TEXT REFERENCES comments(id) ON DELETE CASCADE
-    `);
-
-    // Create index
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON comments(parent_id)
-    `);
-
-    await client.end();
+    // If error mentions column doesn't exist, provide SQL
+    const errorMsg = error?.message || String(error);
+    
+    if (errorMsg.includes("parent_id") || errorMsg.includes("column")) {
+      return NextResponse.json({
+        success: false,
+        message: "需要手动添加 parent_id 列",
+        sql: "ALTER TABLE comments ADD COLUMN parent_id TEXT REFERENCES comments(id) ON DELETE CASCADE;",
+        instruction: "请在 Supabase Dashboard → SQL Editor 中执行上述 SQL 语句"
+      });
+    }
 
     return NextResponse.json({ 
-      success: true, 
-      message: "Added parent_id column to comments table" 
-    });
+      success: false, 
+      error: errorMsg,
+      sql: "ALTER TABLE comments ADD COLUMN parent_id TEXT REFERENCES comments(id) ON DELETE CASCADE;",
+      instruction: "请在 Supabase Dashboard → SQL Editor 中执行上述 SQL 语句"
+    }, { status: 500 });
   } catch (error: any) {
     console.error("Migration error:", error);
     return NextResponse.json(
-      { error: error.message || "Migration failed" },
+      { 
+        error: error.message || "Migration failed",
+        sql: "ALTER TABLE comments ADD COLUMN parent_id TEXT REFERENCES comments(id) ON DELETE CASCADE;",
+        instruction: "请在 Supabase Dashboard → SQL Editor 中执行上述 SQL 语句"
+      },
       { status: 500 }
     );
   }
