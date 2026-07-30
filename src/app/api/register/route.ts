@@ -45,6 +45,8 @@ export async function POST(request: Request) {
         username,
         password: hashedPassword,
         role: "USER",
+        level: 1,
+        experience: 0,
       },
       select: {
         id: true,

@@ -191,20 +191,36 @@ export default function ResourceDetailPage() {
     router.push("/");
   };
 
+  const [commentError, setCommentError] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
+
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
+    
+    setCommentError("");
+    setSubmittingComment(true);
 
-    const res = await fetch(`/api/resources/${params.id}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: newComment.trim() }),
-    });
+    try {
+      const res = await fetch(`/api/resources/${params.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newComment.trim() }),
+      });
 
-    if (res.ok) {
-      setNewComment("");
-      setShowCommentForm(false);
-      fetchComments();
+      const data = await res.json();
+
+      if (res.ok) {
+        setNewComment("");
+        setShowCommentForm(false);
+        fetchComments();
+      } else {
+        setCommentError(data.error || "评论发送失败");
+      }
+    } catch (error) {
+      setCommentError("网络错误，请重试");
+    } finally {
+      setSubmittingComment(false);
     }
   };
 
@@ -299,12 +315,7 @@ export default function ResourceDetailPage() {
       );
     }
 
-    const level = getLevelFromExperience(user.experience);
-    return (
-      <span className="px-2 py-0.5 text-xs rounded font-medium bg-gray-600/40 text-gray-300">
-        LV{level}
-      </span>
-    );
+    return null;
   };
 
   return (
@@ -843,6 +854,11 @@ export default function ResourceDetailPage() {
 
           {showCommentForm && session && (
             <form onSubmit={handleAddComment} className="mb-6">
+              {commentError && (
+                <div className="mb-2 px-3 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm">
+                  {commentError}
+                </div>
+              )}
               <textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
@@ -850,6 +866,7 @@ export default function ResourceDetailPage() {
                 rows={3}
                 placeholder="写下你的评论... (最多500字)"
                 maxLength={500}
+                disabled={submittingComment}
               />
               <div className="flex items-center justify-between mt-2">
                 <span className="text-gray-500 text-xs">
@@ -857,10 +874,10 @@ export default function ResourceDetailPage() {
                 </span>
                 <button
                   type="submit"
-                  disabled={!newComment.trim()}
+                  disabled={!newComment.trim() || submittingComment}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
                 >
-                  发送评论
+                  {submittingComment ? "发送中..." : "发送评论"}
                 </button>
               </div>
             </form>

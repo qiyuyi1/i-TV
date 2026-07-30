@@ -46,8 +46,8 @@ export async function POST(request: Request) {
             isOwner: true,
             isSuperAdmin: false,
             title: "站长",
-            level: 999,
-            experience: 999999,
+            level: 50,
+            experience: 9999,
           },
           select: { id: true, username: true, role: true, isOwner: true, title: true },
         });
@@ -72,8 +72,8 @@ export async function POST(request: Request) {
           isOwner: true,
           isSuperAdmin: false,
           title: "站长",
-          level: 999,
-          experience: 999999,
+          level: 50,
+          experience: 9999,
         },
         select: { id: true, username: true, role: true, isOwner: true, title: true },
       });
@@ -116,8 +116,8 @@ export async function POST(request: Request) {
         isOwner: true,
         isSuperAdmin: false,
         title: "站长",
-        level: 999,
-        experience: 999999,
+        level: 50,
+        experience: 9999,
       },
       select: { id: true, username: true, role: true, isOwner: true, title: true },
     });

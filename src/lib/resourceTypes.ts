@@ -1,5 +1,5 @@
 // 资源类型常量配置
-// 分类顺序：独家制作 -> 电影 -> 剧集 -> 特摄 -> 综艺 -> 纪录
+// 分类顺序：独家制作 -> 动画 -> 电影 -> 电视剧 -> 特摄 -> 综艺 -> 纪录
 
 export interface ResourceType {
   value: string;
@@ -14,13 +14,18 @@ export const RESOURCE_TYPES: ResourceType[] = [
     allowManualCreate: true,
   },
   {
+    value: "anime",
+    label: "动画",
+    allowManualCreate: true,
+  },
+  {
     value: "movie",
     label: "电影",
     allowManualCreate: true,
   },
   {
     value: "tv",
-    label: "剧集",
+    label: "电视剧",
     allowManualCreate: true,
   },
   {

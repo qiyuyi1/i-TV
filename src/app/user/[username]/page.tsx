@@ -191,12 +191,10 @@ export default function UserProfilePage() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            {!isSpecialUser && (
-              <div className="text-center glass rounded-xl p-3">
-                <div className="text-2xl font-bold text-white">{"LV"}{level}</div>
-                <div className="text-gray-400 text-xs">等级</div>
-              </div>
-            )}
+            <div className="text-center glass rounded-xl p-3">
+              <div className="text-2xl font-bold text-white">{"LV"}{level}</div>
+              <div className="text-gray-400 text-xs">等级</div>
+            </div>
             <div className="text-center glass rounded-xl p-3">
               <div className="text-2xl font-bold text-white">{user.experience}</div>
               <div className="text-gray-400 text-xs">经验值</div>
