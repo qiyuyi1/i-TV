@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import ResourceCard from "@/components/ResourceCard";
+import GlassSelect from "@/components/GlassSelect";
 import { RESOURCE_TYPES, getTypeLabel } from "@/lib/resourceTypes";
 
 interface Resource {
@@ -40,6 +41,8 @@ const YEAR_OPTIONS = [
   { value: "2010-2020", label: "2010-2020" },
   { value: "2000-2010", label: "2000-2010" },
   { value: "1990-2000", label: "1990-2000" },
+  { value: "1980-1990", label: "1980-1990" },
+  { value: "1970-1980", label: "1970-1980" },
   { value: "1970以前", label: "1970以前" },
 ];
 
@@ -84,77 +87,6 @@ function FilterIcon({ className }: { className?: string }) {
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
     </svg>
-  );
-}
-
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-    </svg>
-  );
-}
-
-function GlassSelect({
-  value,
-  onChange,
-  options,
-  placeholder,
-  className = "",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  placeholder?: string;
-  className?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    if (open) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open, ref]);
-
-  const currentOption = options.find((o) => o.value === value);
-
-  return (
-    <div ref={ref} className={`relative ${className}`}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-2 glass rounded-xl text-white text-sm transition-all hover:bg-white/10"
-      >
-        <span className="truncate">{currentOption?.label || placeholder}</span>
-        <ChevronDownIcon className={`w-4 h-4 text-gray-400 flex-shrink-0 ml-2 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 right-0 mt-2 z-50 glass-strong rounded-xl py-2 shadow-xl">
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
-              className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                value === opt.value
-                  ? "text-white bg-white/10"
-                  : "text-gray-300 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 

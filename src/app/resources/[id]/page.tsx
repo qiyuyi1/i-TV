@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import GlassSelect from "@/components/GlassSelect";
 import { getImageUrl } from "@/lib/image";
 import { getTypeLabel } from "@/lib/resourceTypes";
 import {
@@ -66,6 +67,28 @@ interface Comment {
 }
 
 const statusOptions = ["更新中", "已完结", "待更新"];
+
+const COUNTRY_EDIT_OPTIONS = [
+  { value: "", label: "请选择" },
+  { value: "中国大陆", label: "🇨🇳 中国大陆" },
+  { value: "中国香港", label: "🇭🇰 中国香港" },
+  { value: "中国台湾", label: "🇹🇼 中国台湾" },
+  { value: "美国", label: "🇺🇸 美国" },
+  { value: "韩国", label: "🇰🇷 韩国" },
+  { value: "日本", label: "🇯🇵 日本" },
+  { value: "英国", label: "🇬🇧 英国" },
+  { value: "法国", label: "🇫🇷 法国" },
+  { value: "德国", label: "🇩🇪 德国" },
+  { value: "泰国", label: "🇹🇭 泰国" },
+  { value: "其他", label: "🌍 其他" },
+];
+
+const STATUS_EDIT_OPTIONS = [
+  { value: "", label: "未知" },
+  { value: "更新中", label: "更新中" },
+  { value: "已完结", label: "已完结" },
+  { value: "待更新", label: "待更新" },
+];
 
 export default function ResourceDetailPage() {
   const params = useParams();
@@ -554,7 +577,7 @@ export default function ResourceDetailPage() {
               {(resource.links || []).length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {(resource.links || []).map((link) => (
-                    <div key={link.id} className="relative z-30">
+                    <div key={link.id} className="relative z-[80]">
                       <a
                         href={link.url}
                         target="_blank"
@@ -581,7 +604,7 @@ export default function ResourceDetailPage() {
                         </button>
                       )}
                       {openMenuLinkId === link.id && (
-                        <div className="absolute left-0 mt-1 z-50 bg-gray-900/95 border border-white/20 rounded-lg py-1 min-w-[140px] shadow-xl backdrop-blur-sm">
+                        <div className="absolute left-0 mt-1 z-[90] bg-gray-900/95 border border-white/20 rounded-lg py-1 min-w-[140px] shadow-xl backdrop-blur-sm">
                           <a
                             href={link.url}
                             target="_blank"
@@ -611,7 +634,7 @@ export default function ResourceDetailPage() {
 
               {openMenuLinkId && (
                 <div
-                  className="fixed inset-0 z-10"
+                  className="fixed inset-0 z-[75]"
                   onClick={() => setOpenMenuLinkId(null)}
                 />
               )}
@@ -655,26 +678,14 @@ export default function ResourceDetailPage() {
                 <label className="block text-gray-300 text-sm mb-2">
                   国家/地区
                 </label>
-                <select
-                  value={editForm.country}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, country: e.target.value })
+                <GlassSelect
+                  value={editForm.country || ""}
+                  onChange={(v) =>
+                    setEditForm({ ...editForm, country: v })
                   }
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                >
-                  <option value="" className="bg-gray-900 text-white">请选择</option>
-                  <option value="中国大陆" className="bg-gray-900 text-white">🇨🇳 中国大陆</option>
-                  <option value="中国香港" className="bg-gray-900 text-white">🇭🇰 中国香港</option>
-                  <option value="中国台湾" className="bg-gray-900 text-white">🇹🇼 中国台湾</option>
-                  <option value="美国" className="bg-gray-900 text-white">🇺🇸 美国</option>
-                  <option value="韩国" className="bg-gray-900 text-white">🇰🇷 韩国</option>
-                  <option value="日本" className="bg-gray-900 text-white">🇯🇵 日本</option>
-                  <option value="英国" className="bg-gray-900 text-white">🇬🇧 英国</option>
-                  <option value="法国" className="bg-gray-900 text-white">🇫🇷 法国</option>
-                  <option value="德国" className="bg-gray-900 text-white">🇩🇪 德国</option>
-                  <option value="泰国" className="bg-gray-900 text-white">🇹🇭 泰国</option>
-                  <option value="其他" className="bg-gray-900 text-white">🌍 其他</option>
-                </select>
+                  options={COUNTRY_EDIT_OPTIONS}
+                  placeholder="请选择"
+                />
               </div>
               <div>
                 <label className="block text-gray-300 text-sm mb-2">
@@ -725,20 +736,14 @@ export default function ResourceDetailPage() {
                 <label className="block text-gray-300 text-sm mb-2">
                   更新状态
                 </label>
-                <select
-                  value={editForm.status}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, status: e.target.value })
+                <GlassSelect
+                  value={editForm.status || ""}
+                  onChange={(v) =>
+                    setEditForm({ ...editForm, status: v })
                   }
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                >
-                  <option value="" className="bg-gray-900 text-white">未知</option>
-                  {statusOptions.map((s) => (
-                    <option key={s} value={s} className="bg-gray-900 text-white">
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                  options={STATUS_EDIT_OPTIONS}
+                  placeholder="未知"
+                />
               </div>
               <div>
                 <label className="block text-gray-300 text-sm mb-2">

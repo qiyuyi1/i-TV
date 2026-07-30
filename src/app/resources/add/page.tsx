@@ -4,8 +4,31 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import GlassSelect from "@/components/GlassSelect";
 import { getImageUrl } from "@/lib/image";
 import { RESOURCE_TYPES, getTypeLabel } from "@/lib/resourceTypes";
+
+const COUNTRY_EDIT_OPTIONS = [
+  { value: "", label: "请选择" },
+  { value: "中国大陆", label: "🇨🇳 中国大陆" },
+  { value: "中国香港", label: "🇭🇰 中国香港" },
+  { value: "中国台湾", label: "🇹🇼 中国台湾" },
+  { value: "美国", label: "🇺🇸 美国" },
+  { value: "韩国", label: "🇰🇷 韩国" },
+  { value: "日本", label: "🇯🇵 日本" },
+  { value: "英国", label: "🇬🇧 英国" },
+  { value: "法国", label: "🇫🇷 法国" },
+  { value: "德国", label: "🇩🇪 德国" },
+  { value: "泰国", label: "🇹🇭 泰国" },
+  { value: "其他", label: "🌍 其他" },
+];
+
+const STATUS_EDIT_OPTIONS = [
+  { value: "", label: "未知" },
+  { value: "更新中", label: "更新中" },
+  { value: "已完结", label: "已完结" },
+  { value: "待更新", label: "待更新" },
+];
 
 export default function AddResourcePage() {
   const router = useRouter();
@@ -141,17 +164,11 @@ export default function AddResourcePage() {
               <label className="block text-gray-300 text-sm mb-1">
                 分类 *
               </label>
-              <select
+              <GlassSelect
                 value={finalType}
-                onChange={(e) => setFinalType(e.target.value)}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              >
-                {RESOURCE_TYPES.map((t) => (
-                  <option key={t.value} value={t.value} className="bg-gray-900 text-white">
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setFinalType(v)}
+                options={RESOURCE_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+              />
             </div>
             <div className="md:col-span-2">
               <label className="block text-gray-300 text-sm mb-1">
@@ -225,29 +242,17 @@ export default function AddResourcePage() {
               <label className="block text-gray-300 text-sm mb-1">
                 国家/地区
               </label>
-              <select
+              <GlassSelect
                 value={manualForm.country}
-                onChange={(e) =>
+                onChange={(v) =>
                   setManualForm({
                     ...manualForm,
-                    country: e.target.value,
+                    country: v,
                   })
                 }
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              >
-                <option value="" className="bg-gray-900 text-white">请选择</option>
-                <option value="中国大陆" className="bg-gray-900 text-white">🇨🇳 中国大陆</option>
-                <option value="中国香港" className="bg-gray-900 text-white">🇭🇰 中国香港</option>
-                <option value="中国台湾" className="bg-gray-900 text-white">🇹🇼 中国台湾</option>
-                <option value="美国" className="bg-gray-900 text-white">🇺🇸 美国</option>
-                <option value="韩国" className="bg-gray-900 text-white">🇰🇷 韩国</option>
-                <option value="日本" className="bg-gray-900 text-white">🇯🇵 日本</option>
-                <option value="英国" className="bg-gray-900 text-white">🇬🇧 英国</option>
-                <option value="法国" className="bg-gray-900 text-white">🇫🇷 法国</option>
-                <option value="德国" className="bg-gray-900 text-white">🇩🇪 德国</option>
-                <option value="泰国" className="bg-gray-900 text-white">🇹🇭 泰国</option>
-                <option value="其他" className="bg-gray-900 text-white">🌍 其他</option>
-              </select>
+                options={COUNTRY_EDIT_OPTIONS}
+                placeholder="请选择"
+              />
             </div>
             <div>
               <label className="block text-gray-300 text-sm mb-1">
@@ -270,21 +275,17 @@ export default function AddResourcePage() {
               <label className="block text-gray-300 text-sm mb-1">
                 更新状态
               </label>
-              <select
+              <GlassSelect
                 value={manualForm.status}
-                onChange={(e) =>
+                onChange={(v) =>
                   setManualForm({
                     ...manualForm,
-                    status: e.target.value,
+                    status: v,
                   })
                 }
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              >
-                <option value="" className="bg-gray-900 text-white">未知</option>
-                <option value="更新中" className="bg-gray-900 text-white">更新中</option>
-                <option value="已完结" className="bg-gray-900 text-white">已完结</option>
-                <option value="待更新" className="bg-gray-900 text-white">待更新</option>
-              </select>
+                options={STATUS_EDIT_OPTIONS}
+                placeholder="未知"
+              />
             </div>
             <div className="md:col-span-2">
               <label className="block text-gray-300 text-sm mb-1">
