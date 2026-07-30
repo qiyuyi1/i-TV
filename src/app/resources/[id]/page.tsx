@@ -328,24 +328,8 @@ export default function ResourceDetailPage() {
 
   return (
     <div className="pt-20 pb-16">
-      <div 
-        className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative"
-        style={{
-          backgroundColor: backdropUrl ? undefined : undefined,
-        }}
-      >
-        {backdropUrl && (
-          <div 
-            className="absolute inset-0 pointer-events-none rounded-2xl"
-            style={{
-              backgroundImage: `url(${backdropUrl})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              opacity: 0.15,
-            }}
-          />
-        )}
-        <div className="relative z-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative">
         <div className="mb-6">
           <Link
             href="/"
@@ -368,8 +352,19 @@ export default function ResourceDetailPage() {
           </Link>
         </div>
 
-        <div className="glass rounded-2xl">
-          <div className="md:flex">
+        <div className="glass rounded-2xl relative overflow-hidden">
+          {backdropUrl && (
+            <div 
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: `url(${backdropUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                opacity: 0.15,
+              }}
+            />
+          )}
+          <div className="md:flex relative z-10">
             <div className="md:w-64 flex-shrink-0 self-center">
               {resource.posterPath && (() => {
                 const posterUrl = getImageUrl(resource.posterPath, "w500");

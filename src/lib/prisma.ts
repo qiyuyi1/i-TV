@@ -261,9 +261,6 @@ function toDbRow(
   for (const [key, value] of Object.entries(data)) {
     const sqlCol = columns[key] || key;
     result[sqlCol] = value;
-    // Also write to the old camelCase column for backward compatibility
-    // (some old columns have NOT NULL constraints)
-    result[key] = value;
   }
   return result;
 }

@@ -52,8 +52,8 @@ export function getUserTitle(user: {
   isSuperAdmin?: boolean;
   title?: string | null;
 }): string {
-  if (user.isOwner) return "站长";
-  if (user.isSuperAdmin) return "副站长";
+  if (user.isOwner || user.title === "站长") return "站长";
+  if (user.isSuperAdmin || user.title === "副站长") return "副站长";
   if (user.role === "ADMIN") return "管理员";
   if (user.title) return user.title;
   return "";

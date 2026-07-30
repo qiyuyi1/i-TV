@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getUserTitle, canAssignTitle } from "@/lib/constants";
+import { getUserTitle, canAssignTitle, getLevelFromExperience } from "@/lib/constants";
 
 export async function PATCH(
   request: Request,
@@ -27,7 +27,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { role, assignRole, title: newTitle } = body;
+    const { role, assignRole, title: newTitle, experience: newExperience } = body;
 
     const user = await prisma.user.findUnique({
       where: { username: params.username },
@@ -152,6 +152,13 @@ export async function PATCH(
           // Keep role as is unless user is already an admin
         }
       }
+    }
+
+    // Handle experience update
+    if (newExperience !== undefined) {
+      const expValue = Math.max(0, Math.min(999999, Number(newExperience)));
+      updateData.experience = expValue;
+      updateData.level = Math.min(999, getLevelFromExperience(expValue));
     }
 
     const updatedUser = await prisma.user.update({
