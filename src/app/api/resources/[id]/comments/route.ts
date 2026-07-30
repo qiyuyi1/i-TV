@@ -6,11 +6,11 @@ import { getLevelFromExperience } from "@/lib/constants";
 
 export async function GET(
   request: Request,
-  { params }: { params: { resourceId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const comments = await prisma.comment.findMany({
-      where: { resourceId: params.resourceId },
+      where: { resourceId: params.id },
       orderBy: [
         { isPinned: "desc" },
         { createdAt: "desc" },
@@ -43,7 +43,7 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { resourceId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -69,7 +69,7 @@ export async function POST(
     }
 
     const resource = await prisma.resource.findUnique({
-      where: { id: params.resourceId },
+      where: { id: params.id },
     });
 
     if (!resource) {
@@ -82,7 +82,7 @@ export async function POST(
       data: {
         content: content.trim(),
         userId,
-        resourceId: params.resourceId,
+        resourceId: params.id,
       },
       include: {
         user: {

@@ -315,31 +315,37 @@ export default function ResourceDetailPage() {
       );
     }
 
-    return null;
+    // 普通用户显示等级
+    const level = getLevelFromExperience(user.experience);
+    return (
+      <span className="px-2 py-0.5 text-xs rounded font-medium bg-gray-600/40 text-gray-300">
+        LV{level}
+      </span>
+    );
   };
+
+  const backdropUrl = resource.backdropPath ? getImageUrl(resource.backdropPath, "original") : null;
 
   return (
     <div className="pt-20 pb-16">
-      {resource.backdropPath && (() => {
-          const backdropUrl = getImageUrl(resource.backdropPath, "original");
-          if (!backdropUrl) return null;
-          return (
-            <>
-              <div
-                className="fixed inset-0 w-full h-full pointer-events-none"
-                style={{
-                  backgroundImage: `url(${backdropUrl})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  opacity: 0.35,
-                }}
-              />
-              <div className="fixed inset-0 w-full h-full pointer-events-none bg-gradient-to-b from-gray-950/60 via-gray-950/30 to-gray-950/80" />
-            </>
-          );
-        })()}
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div 
+        className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative"
+        style={{
+          backgroundColor: backdropUrl ? undefined : undefined,
+        }}
+      >
+        {backdropUrl && (
+          <div 
+            className="absolute inset-0 pointer-events-none rounded-2xl"
+            style={{
+              backgroundImage: `url(${backdropUrl})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: 0.15,
+            }}
+          />
+        )}
+        <div className="relative z-10">
         <div className="mb-6">
           <Link
             href="/"
@@ -966,6 +972,7 @@ export default function ResourceDetailPage() {
               })}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
