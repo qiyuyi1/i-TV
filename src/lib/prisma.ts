@@ -156,6 +156,14 @@ function applyWhere(
       continue;
     }
 
+    if (key === "AND") {
+      // Handle AND: array of where objects (each condition is ANDed)
+      for (const andItem of value as Array<Record<string, any>>) {
+        query = applyWhere(query, andItem, columns);
+      }
+      continue;
+    }
+
     const sqlCol = columns[key] || key;
 
     if (value === null) {

@@ -122,11 +122,27 @@ export default function ResourceDetailPage() {
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
   const [openMenuLinkId, setOpenMenuLinkId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     fetchResource();
     fetchComments();
   }, [params.id]);
+
+  // Close menu on resize or scroll
+  useEffect(() => {
+    if (!openMenuLinkId) return;
+    const close = () => {
+      setOpenMenuLinkId(null);
+      setMenuPosition(null);
+    };
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [openMenuLinkId]);
 
   const fetchResource = async () => {
     try {
@@ -577,7 +593,7 @@ export default function ResourceDetailPage() {
               {(resource.links || []).length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {(resource.links || []).map((link) => (
-                    <div key={link.id} className="relative z-[80]">
+                    <div key={link.id} className="inline-flex items-center">
                       <a
                         href={link.url}
                         target="_blank"
@@ -591,7 +607,26 @@ export default function ResourceDetailPage() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setOpenMenuLinkId(openMenuLinkId === link.id ? null : link.id);
+                            if (openMenuLinkId === link.id) {
+                              setOpenMenuLinkId(null);
+                              setMenuPosition(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const dropdownW = 140;
+                              const dropdownH = 84;
+                              let left = rect.left;
+                              let top = rect.bottom + 4;
+                              // Right boundary: clamp to viewport
+                              if (left + dropdownW > window.innerWidth - 8) {
+                                left = Math.max(8, window.innerWidth - dropdownW - 8);
+                              }
+                              // Bottom boundary: flip upward if not enough space
+                              if (top + dropdownH > window.innerHeight) {
+                                top = rect.top - dropdownH - 4;
+                              }
+                              setMenuPosition({ top, left });
+                              setOpenMenuLinkId(link.id);
+                            }
                           }}
                           className="ml-1 text-gray-500 hover:text-red-400 transition-colors"
                           title="管理链接"
@@ -602,24 +637,6 @@ export default function ResourceDetailPage() {
                             <circle cx="16" cy="10" r="1.5" />
                           </svg>
                         </button>
-                      )}
-                      {openMenuLinkId === link.id && (
-                        <div className="absolute left-0 mt-1 z-[90] bg-gray-900/95 border border-white/20 rounded-lg py-1 min-w-[140px] shadow-xl backdrop-blur-sm">
-                          <a
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block px-3 py-1.5 text-sm text-gray-200 hover:text-white hover:bg-white/10"
-                          >
-                            打开链接
-                          </a>
-                          <button
-                            onClick={() => handleDeleteLink(link.id)}
-                            className="block w-full text-left px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/20"
-                          >
-                            删除链接
-                          </button>
-                        </div>
                       )}
                     </div>
                   ))}
@@ -632,10 +649,45 @@ export default function ResourceDetailPage() {
                 </div>
               )}
 
+              {openMenuLinkId && menuPosition && (
+                <div
+                  className="fixed z-[9999] bg-gray-900/95 border border-white/20 rounded-lg py-1 min-w-[140px] shadow-xl backdrop-blur-md"
+                  style={{ top: menuPosition.top, left: menuPosition.left }}
+                >
+                  {(() => {
+                    const activeLink = (resource?.links || []).find(
+                      (l) => l.id === openMenuLinkId
+                    );
+                    if (!activeLink) return null;
+                    return (
+                      <>
+                        <a
+                          href={activeLink.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block px-3 py-1.5 text-sm text-gray-200 hover:text-white hover:bg-white/10"
+                        >
+                          打开链接
+                        </a>
+                        <button
+                          onClick={() => handleDeleteLink(activeLink.id)}
+                          className="block w-full text-left px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                        >
+                          删除链接
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
               {openMenuLinkId && (
                 <div
-                  className="fixed inset-0 z-[75]"
-                  onClick={() => setOpenMenuLinkId(null)}
+                  className="fixed inset-0 z-[9998]"
+                  onClick={() => {
+                    setOpenMenuLinkId(null);
+                    setMenuPosition(null);
+                  }}
                 />
               )}
             </div>
