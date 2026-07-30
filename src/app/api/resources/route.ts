@@ -26,7 +26,17 @@ export async function GET(request: Request) {
     }
 
     if (year && year !== "all") {
-      where.year = year;
+      if (year.includes("-")) {
+        const [minY, maxY] = year.split("-");
+        where.AND = where.AND || [];
+        if (minY) where.AND.push({ year: { gte: minY } });
+        if (maxY) where.AND.push({ year: { lte: maxY } });
+      } else if (year.endsWith("以前")) {
+        const cutoff = year.replace("以前", "");
+        where.year = { lte: cutoff };
+      } else {
+        where.year = year;
+      }
     }
 
     if (minRating) {

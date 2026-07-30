@@ -171,7 +171,7 @@ export default function AdminPage() {
           <p className="text-gray-400 mb-4">登录后可申请成为首个站长</p>
           <Link
             href="/login"
-            className="inline-block px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="inline-block px-6 py-2 glass-strong hover:bg-white/15 text-white rounded-lg transition-colors"
           >
             前往登录
           </Link>
@@ -275,7 +275,7 @@ export default function AdminPage() {
             />
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="px-6 py-2 glass-strong hover:bg-white/15 text-white rounded-lg transition-colors"
             >
               查询
             </button>
@@ -355,10 +355,10 @@ export default function AdminPage() {
                           t.value === null
                             ? "bg-gray-600 hover:bg-gray-700 text-white"
                             : t.value === "站长"
-                            ? "bg-amber-600 hover:bg-amber-700 text-white"
+                            ? "bg-amber-600/80 hover:bg-amber-600 text-white"
                             : t.value === "副站长"
-                            ? "bg-orange-600 hover:bg-orange-700 text-white"
-                            : "bg-blue-600 hover:bg-blue-700 text-white"
+                            ? "bg-orange-600/80 hover:bg-orange-600 text-white"
+                            : "glass-strong hover:bg-white/15 text-white"
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
                         {t.label}
@@ -379,7 +379,7 @@ export default function AdminPage() {
                     />
                     <button
                       onClick={() => handleSetCustomTitle(searchResult.username)}
-                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition-colors"
+                      className="px-3 py-1.5 glass-strong hover:bg-white/15 text-white rounded-lg text-sm transition-colors"
                     >
                       设置头衔
                     </button>

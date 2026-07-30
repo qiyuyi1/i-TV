@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import ResourceCard from "@/components/ResourceCard";
 import { RESOURCE_TYPES, getTypeLabel } from "@/lib/resourceTypes";
@@ -34,6 +34,25 @@ const COUNTRY_OPTIONS = [
   { value: "其他", label: "🌍 其他" },
 ];
 
+const YEAR_OPTIONS = [
+  { value: "all", label: "全部年份" },
+  { value: "2020-2030", label: "2020-2030" },
+  { value: "2010-2020", label: "2010-2020" },
+  { value: "2000-2010", label: "2000-2010" },
+  { value: "1990-2000", label: "1990-2000" },
+  { value: "1970以前", label: "1970以前" },
+];
+
+const RATING_OPTIONS = [
+  { value: "all", label: "不限" },
+  { value: "9", label: "9.0+" },
+  { value: "8", label: "8.0+" },
+  { value: "7", label: "7.0+" },
+  { value: "6", label: "6.0+" },
+  { value: "5", label: "5.0+" },
+  { value: "0", label: "全部" },
+];
+
 const SORT_OPTIONS = [
   { value: "createdAt", order: "desc", label: "最新发布" },
   { value: "rating", order: "desc", label: "评分从高到低" },
@@ -65,6 +84,77 @@ function FilterIcon({ className }: { className?: string }) {
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
     </svg>
+  );
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+    </svg>
+  );
+}
+
+function GlassSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  className = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open, ref]);
+
+  const currentOption = options.find((o) => o.value === value);
+
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-2 glass rounded-xl text-white text-sm transition-all hover:bg-white/10"
+      >
+        <span className="truncate">{currentOption?.label || placeholder}</span>
+        <ChevronDownIcon className={`w-4 h-4 text-gray-400 flex-shrink-0 ml-2 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-2 z-50 glass-strong rounded-xl py-2 shadow-xl">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                value === opt.value
+                  ? "text-white bg-white/10"
+                  : "text-gray-300 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -118,8 +208,6 @@ export default function HomePage() {
     );
   }) : [];
 
-  const yearOptions = ["all", ...Array.from(new Set(resources.filter(r => r.year).map(r => r.year!))).sort().reverse()];
-
   const hasActiveFilters = filter !== "all" || country !== "all" || year !== "all" || minRating !== "all";
 
   const clearFilters = () => {
@@ -127,6 +215,16 @@ export default function HomePage() {
     setCountry("all");
     setYear("all");
     setMinRating("all");
+  };
+
+  const getYearLabel = (v: string) => {
+    const opt = YEAR_OPTIONS.find((o) => o.value === v);
+    return opt?.label || v;
+  };
+
+  const getRatingLabel = (v: string) => {
+    const opt = RATING_OPTIONS.find((o) => o.value === v);
+    return opt?.label || v;
   };
 
   return (
@@ -182,7 +280,7 @@ export default function HomePage() {
               onClick={() => setShowFilters(!showFilters)}
               className={`px-4 py-3 rounded-xl transition-all flex items-center gap-2 ${
                 showFilters || hasActiveFilters
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                  ? "glass-strong text-white"
                   : "glass text-gray-300 hover:text-white"
               }`}
             >
@@ -197,7 +295,7 @@ export default function HomePage() {
 
         {/* Filter Panel */}
         {showFilters && (
-          <div className="glass rounded-2xl p-6 mb-6 space-y-4">
+          <div className="glass rounded-2xl p-6 mb-6 space-y-5">
             {/* Type Filter */}
             <div>
               <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">类型</label>
@@ -208,7 +306,7 @@ export default function HomePage() {
                     onClick={() => setFilter(type)}
                     className={`px-4 py-1.5 rounded-lg text-sm transition-all ${
                       filter === type
-                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-500/20"
+                        ? "glass-strong text-white"
                         : "bg-white/5 text-gray-300 hover:text-white hover:bg-white/10"
                     }`}
                   >
@@ -221,49 +319,36 @@ export default function HomePage() {
             {/* Country Filter */}
             <div>
               <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">国家/地区</label>
-              <select
+              <GlassSelect
                 value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                className="w-full sm:w-auto px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              >
-                {COUNTRY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-gray-900 text-white">
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                onChange={setCountry}
+                options={COUNTRY_OPTIONS}
+                placeholder="选择国家/地区"
+                className="sm:w-64"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Year Filter */}
               <div>
                 <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">年份</label>
-                <select
+                <GlassSelect
                   value={year}
-                  onChange={(e) => setYear(e.target.value)}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                >
-                  <option value="all" className="bg-gray-900 text-white">全部年份</option>
-                  {yearOptions.filter(y => y !== "all").map((y) => (
-                    <option key={y} value={y} className="bg-gray-900 text-white">{y}年</option>
-                  ))}
-                </select>
+                  onChange={setYear}
+                  options={YEAR_OPTIONS}
+                  placeholder="选择年份"
+                />
               </div>
 
               {/* Rating Filter */}
               <div>
                 <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">最低评分</label>
-                <select
+                <GlassSelect
                   value={minRating}
-                  onChange={(e) => setMinRating(e.target.value)}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                >
-                  <option value="all" className="bg-gray-900 text-white">不限</option>
-                  <option value="9" className="bg-gray-900 text-white">9.0+</option>
-                  <option value="8" className="bg-gray-900 text-white">8.0+</option>
-                  <option value="7" className="bg-gray-900 text-white">7.0+</option>
-                  <option value="6" className="bg-gray-900 text-white">6.0+</option>
-                </select>
+                  onChange={setMinRating}
+                  options={RATING_OPTIONS}
+                  placeholder="选择评分"
+                />
               </div>
             </div>
 
@@ -282,7 +367,7 @@ export default function HomePage() {
                       }}
                       className={`px-3 py-1.5 rounded-lg text-sm transition-all ${
                         isActive
-                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          ? "glass-strong text-white"
                           : "bg-white/5 text-gray-300 hover:text-white hover:bg-white/10"
                       }`}
                     >
@@ -310,23 +395,23 @@ export default function HomePage() {
         {hasActiveFilters && !showFilters && (
           <div className="flex gap-2 flex-wrap mb-4">
             {filter !== "all" && (
-              <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs border border-blue-500/30">
+              <span className="px-3 py-1 bg-white/5 text-gray-200 rounded-full text-xs border border-white/10">
                 类型: {getTypeLabel(filter)}
               </span>
             )}
             {country !== "all" && (
-              <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs border border-green-500/30">
+              <span className="px-3 py-1 bg-white/5 text-gray-200 rounded-full text-xs border border-white/10">
                 国家: {COUNTRY_OPTIONS.find(c => c.value === country)?.label}
               </span>
             )}
             {year !== "all" && (
-              <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs border border-purple-500/30">
-                年份: {year}年
+              <span className="px-3 py-1 bg-white/5 text-gray-200 rounded-full text-xs border border-white/10">
+                年份: {getYearLabel(year)}
               </span>
             )}
             {minRating !== "all" && (
-              <span className="px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-xs border border-amber-500/30">
-                评分: {minRating}+
+              <span className="px-3 py-1 bg-white/5 text-gray-200 rounded-full text-xs border border-white/10">
+                评分: {getRatingLabel(minRating)}
               </span>
             )}
           </div>
@@ -356,7 +441,7 @@ export default function HomePage() {
             {session && (
               <a
                 href="/resources/add"
-                className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25"
+                className="inline-block px-6 py-3 glass-strong text-white rounded-xl transition-all hover:bg-white/15"
               >
                 添加资源
               </a>

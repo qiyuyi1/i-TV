@@ -388,7 +388,7 @@ export default function AddResourcePage() {
             <button
               onClick={handleAddToDatabase}
               disabled={adding || !manualForm.title.trim()}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
+              className="px-6 py-3 glass-strong hover:bg-white/15 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
             >
               {adding ? "添加中..." : "添加到资源库"}
             </button>

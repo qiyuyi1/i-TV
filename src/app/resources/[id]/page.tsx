@@ -544,7 +544,7 @@ export default function ResourceDetailPage() {
                   </button>
                   <button
                     onClick={() => setShowAddLink(!showAddLink)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                    className="px-4 py-2 glass-strong hover:bg-white/15 text-white rounded-lg transition-colors text-sm"
                   >
                     {showAddLink ? "取消" : "+ 添加链接"}
                   </button>
@@ -817,7 +817,7 @@ export default function ResourceDetailPage() {
               <div className="md:col-span-2">
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  className="px-6 py-2 glass-strong hover:bg-white/15 text-white rounded-lg transition-colors"
                 >
                   保存修改
                 </button>
@@ -892,7 +892,7 @@ export default function ResourceDetailPage() {
               <div className="md:col-span-3">
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  className="px-6 py-2 glass-strong hover:bg-white/15 text-white rounded-lg transition-colors"
                 >
                   添加链接
                 </button>
@@ -956,7 +956,7 @@ export default function ResourceDetailPage() {
                 <button
                   type="submit"
                   disabled={!newComment.trim() || submittingComment}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
+                  className="px-4 py-2 glass-strong hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
                 >
                   {submittingComment ? "发送中..." : (replyingTo ? "发送回复" : "发送评论")}
                 </button>

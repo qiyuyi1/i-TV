@@ -227,7 +227,7 @@ function DailyLoginCard({ onClaim }: { onClaim: () => void }) {
     <div className={`glass rounded-2xl p-6 mb-6 border ${alreadyClaimed ? "border-gray-600/30" : "border-amber-500/30"}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${alreadyClaimed ? "bg-gray-700/50" : "bg-gradient-to-br from-amber-500 to-orange-500"}`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${alreadyClaimed ? "bg-gray-700/50" : "glass-strong"}`}>
             <IconSun className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -243,7 +243,7 @@ function DailyLoginCard({ onClaim }: { onClaim: () => void }) {
           className={`px-6 py-2 rounded-xl font-medium transition-all ${
             alreadyClaimed
               ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-              : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-500/25"
+              : "glass-strong text-white hover:bg-white/15"
           }`}
         >
           {claiming ? "领取中..." : checkingStatus ? "检查中" : alreadyClaimed ? "已领取" : "领取奖励"}
@@ -368,7 +368,7 @@ export default function UserProfilePage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="liquid-glass rounded-2xl p-6 md:p-8 mb-6">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg">
+            <div className="w-20 h-20 rounded-full glass-strong flex items-center justify-center text-3xl font-bold text-white shadow-lg">
               {user.username.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -405,7 +405,7 @@ export default function UserProfilePage() {
             </div>
             <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
+                className="h-full bg-white/30 rounded-full transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -421,10 +421,10 @@ export default function UserProfilePage() {
                     t.value === null
                       ? "bg-gray-600 hover:bg-gray-700 text-white"
                       : t.value === "站长"
-                      ? "bg-amber-600 hover:bg-amber-700 text-white"
+                      ? "bg-amber-600/80 hover:bg-amber-600 text-white"
                       : t.value === "副站长"
-                      ? "bg-orange-600 hover:bg-orange-700 text-white"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                      ? "bg-orange-600/80 hover:bg-orange-600 text-white"
+                      : "glass-strong hover:bg-white/15 text-white"
                   }`}
                 >
                   {t.label}

@@ -99,10 +99,10 @@ export default function ResourceCard({ resource }: ResourceCardProps) {
           </h3>
           <div className="flex items-center gap-1.5 mt-0.5">
             {resource.year && (
-              <span className="text-gray-400 text-xs">{resource.year}</span>
+              <span className="text-gray-300 text-xs">{resource.year}</span>
             )}
             {resource.country && (
-              <span className="text-gray-500 text-xs">· {resource.country}</span>
+              <span className="text-gray-300 text-xs">· {resource.country}</span>
             )}
           </div>
         </div>

@@ -42,7 +42,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg glass-strong flex items-center justify-center">
               <span className="text-white font-bold text-sm">斌</span>
             </div>
             <span className="text-xl font-bold text-white">i帅TV</span>
@@ -66,7 +66,7 @@ export default function Navbar() {
             {session && (
               <Link
                 href="/resources/add"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                className="px-4 py-2 glass-strong text-white rounded-lg transition-colors hover:bg-white/15"
               >
                 添加资源
               </Link>
@@ -101,7 +101,7 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href="/register"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  className="px-4 py-2 glass-strong text-white rounded-lg transition-colors hover:bg-white/15"
                 >
                   注册
                 </Link>
@@ -153,7 +153,7 @@ export default function Navbar() {
               <Link
                 href="/resources/add"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block text-blue-400 hover:text-blue-300 py-2"
+                className="block text-gray-200 hover:text-white py-2"
               >
                 添加资源
               </Link>
@@ -205,7 +205,7 @@ export default function Navbar() {
                 <Link
                   href="/register"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block text-blue-400 hover:text-blue-300 py-2"
+                  className="block text-gray-200 hover:text-white py-2"
                 >
                   注册
                 </Link>
