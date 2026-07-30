@@ -98,20 +98,30 @@ export default function ResourceDetailPage() {
   }, [params.id]);
 
   const fetchResource = async () => {
-    const res = await fetch(`/api/resources/${params.id}`);
-    const data = await res.json();
-    setResource(data);
-    setEditForm({
-      currentEpisode: data.currentEpisode || "",
-      totalEpisodes: data.totalEpisodes || "",
-      status: data.status || "",
-      notes: data.notes || "",
-      title: data.title || "",
-      originalTitle: data.originalTitle || "",
-      overview: data.overview || "",
-      posterPath: data.posterPath || "",
-      backdropPath: data.backdropPath || "",
-    });
+    try {
+      const res = await fetch(`/api/resources/${params.id}`);
+      if (!res.ok) {
+        setResource(null);
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      setResource(data);
+      setEditForm({
+        currentEpisode: data.currentEpisode || "",
+        totalEpisodes: data.totalEpisodes || "",
+        status: data.status || "",
+        notes: data.notes || "",
+        title: data.title || "",
+        originalTitle: data.originalTitle || "",
+        overview: data.overview || "",
+        posterPath: data.posterPath || "",
+        backdropPath: data.backdropPath || "",
+      });
+    } catch (error) {
+      console.error("Fetch resource error:", error);
+      setResource(null);
+    }
     setLoading(false);
   };
 
@@ -242,7 +252,18 @@ export default function ResourceDetailPage() {
     );
   }
 
-  const genres = resource.genres ? JSON.parse(resource.genres) : [];
+  let genres: any[] = [];
+  if (resource.genres) {
+    if (Array.isArray(resource.genres)) {
+      genres = resource.genres;
+    } else {
+      try {
+        genres = JSON.parse(resource.genres);
+      } catch {
+        genres = [];
+      }
+    }
+  }
 
   const canEdit = session && (
     (session.user as any)?.role === "ADMIN" ||
@@ -288,23 +309,24 @@ export default function ResourceDetailPage() {
 
   return (
     <div className="pt-20 pb-16">
-      {resource.backdropPath && (
-        <>
-          <div
-            className="fixed inset-0 w-full h-full pointer-events-none"
-            style={{
-              backgroundImage: `url(${getImageUrl(
-                resource.backdropPath,
-                "original"
-              )})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              opacity: 0.35,
-            }}
-          />
-          <div className="fixed inset-0 w-full h-full pointer-events-none bg-gradient-to-b from-gray-950/60 via-gray-950/30 to-gray-950/80" />
-        </>
-      )}
+      {resource.backdropPath && (() => {
+          const backdropUrl = getImageUrl(resource.backdropPath, "original");
+          if (!backdropUrl) return null;
+          return (
+            <>
+              <div
+                className="fixed inset-0 w-full h-full pointer-events-none"
+                style={{
+                  backgroundImage: `url(${backdropUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  opacity: 0.35,
+                }}
+              />
+              <div className="fixed inset-0 w-full h-full pointer-events-none bg-gradient-to-b from-gray-950/60 via-gray-950/30 to-gray-950/80" />
+            </>
+          );
+        })()}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="mb-6">
@@ -332,13 +354,18 @@ export default function ResourceDetailPage() {
         <div className="glass rounded-2xl">
           <div className="md:flex">
             <div className="md:w-64 flex-shrink-0 self-center">
-              {resource.posterPath ? (
-                <img
-                  src={getImageUrl(resource.posterPath, "w500")}
-                  alt={resource.title}
-                  className="w-full max-h-[70vh] md:max-h-[calc(100vh-10rem)] object-contain block rounded-t-2xl md:rounded-l-2xl"
-                />
-              ) : (
+              {resource.posterPath && (() => {
+                const posterUrl = getImageUrl(resource.posterPath, "w500");
+                if (!posterUrl) return null;
+                return (
+                  <img
+                    src={posterUrl}
+                    alt={resource.title}
+                    className="w-full max-h-[70vh] md:max-h-[calc(100vh-10rem)] object-contain block rounded-t-2xl md:rounded-l-2xl"
+                  />
+                );
+              })()}
+              {!resource.posterPath && (
                 <div className="w-full aspect-[2/3] bg-gray-800 flex items-center justify-center">
                   <span className="text-6xl">🎬</span>
                 </div>
@@ -352,9 +379,9 @@ export default function ResourceDetailPage() {
                     <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs">
                       {getTypeLabel(resource.type)}
                     </span>
-                    {resource.rating && (
+                    {resource.rating != null && (
                       <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-xs">
-                        ★ {resource.rating.toFixed(1)}
+                        ★ {Number(resource.rating).toFixed(1)}
                       </span>
                     )}
                     {resource.year && (
@@ -430,7 +457,7 @@ export default function ResourceDetailPage() {
                 <div>
                   <div className="text-gray-500 text-xs mb-1">资源数</div>
                   <div className="font-medium text-white">
-                    {resource.links?.length || 0} 个
+                    {(resource.links || []).length} 个
                   </div>
                 </div>
                 <div>
@@ -438,7 +465,7 @@ export default function ResourceDetailPage() {
                   <div className="font-medium text-white">
                     {resource.createdBy?.username ? (
                       <Link
-                        href={`/user/${resource.createdBy.username}`}
+                        href={`/user/${resource.createdBy?.username}`}
                         className="hover:text-blue-400 transition-colors"
                       >
                         {resource.createdBy.username}
@@ -491,9 +518,9 @@ export default function ResourceDetailPage() {
                 </div>
               )}
 
-              {resource.links && resource.links.length > 0 && (
+              {(resource.links || []).length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {resource.links.map((link) => (
+                  {(resource.links || []).map((link) => (
                     <div key={link.id} className="relative">
                       <a
                         href={link.url}
@@ -654,18 +681,22 @@ export default function ResourceDetailPage() {
                 <p className="text-gray-500 text-xs mt-1">
                   任意图片URL即可
                 </p>
-                {editForm.posterPath && (
-                  <div className="mt-2">
-                    <img
-                      src={getImageUrl(editForm.posterPath, "w185")}
-                      alt="海报预览"
-                      className="w-24 h-36 object-cover rounded-lg border border-white/10"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  </div>
-                )}
+                {editForm.posterPath && (() => {
+                    const previewUrl = getImageUrl(editForm.posterPath, "w185");
+                    if (!previewUrl) return null;
+                    return (
+                      <div className="mt-2">
+                        <img
+                          src={previewUrl}
+                          alt="海报预览"
+                          className="w-24 h-36 object-cover rounded-lg border border-white/10"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      </div>
+                    );
+                  })()}
               </div>
               <div className="md:col-span-2">
                 <label className="block text-gray-300 text-sm mb-2">

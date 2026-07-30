@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getUserTitle, hasAdminPermission, canManageUsers } from "@/lib/constants";
+import { getUserTitle, hasAdminPermission, canManageUsers, getAssignableTitles, getLevelFromExperience } from "@/lib/constants";
 
 interface UserInfo {
   id: string;
@@ -33,6 +33,14 @@ export default function AdminPage() {
   const isSuperAdmin = session && (session.user as any)?.isSuperAdmin;
   const isAdmin = session && (session.user as any)?.role === "ADMIN";
   const hasAdminAccess = isOwner || isSuperAdmin || isAdmin;
+
+  const requesterInfo = {
+    role: (session?.user as any)?.role,
+    isOwner: (session?.user as any)?.isOwner,
+    isSuperAdmin: (session?.user as any)?.isSuperAdmin,
+  };
+
+  const assignableTitles = getAssignableTitles(requesterInfo);
 
   const handleSearchUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +74,30 @@ export default function AdminPage() {
         const data = await res.json();
         setActionMessage(`✅ ${data.message}`);
         setSearchResult((prev) =>
-          prev ? { ...prev, role: data.user.role, isOwner: data.user.isOwner, isSuperAdmin: data.user.isSuperAdmin, title: data.user.title } : null
+          prev ? { ...prev, role: data.user.role, isOwner: data.user.isOwner, isSuperAdmin: data.user.isSuperAdmin, title: data.user.title, level: data.user.level, experience: data.user.experience } : null
+        );
+      } else {
+        const data = await res.json();
+        setActionMessage(`❌ ${data.error || "操作失败"}`);
+      }
+    } catch {
+      setActionMessage("❌ 网络请求失败");
+    }
+  };
+
+  const handleAssignTitle = async (username: string, title: string | null) => {
+    try {
+      const res = await fetch(`/api/admin/users/${username}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setActionMessage(`✅ ${data.message}`);
+        setSearchResult((prev) =>
+          prev ? { ...prev, role: data.user.role, isOwner: data.user.isOwner, isSuperAdmin: data.user.isSuperAdmin, title: data.user.title, level: data.user.level, experience: data.user.experience } : null
         );
       } else {
         const data = await res.json();
@@ -90,7 +121,7 @@ export default function AdminPage() {
         const data = await res.json();
         setActionMessage(`✅ 已设置头衔：${data.user.title}`);
         setSearchResult((prev) =>
-          prev ? { ...prev, title: data.user.title } : null
+          prev ? { ...prev, title: data.user.title, role: data.user.role, isOwner: data.user.isOwner, isSuperAdmin: data.user.isSuperAdmin } : null
         );
         setCustomTitle("");
       } else {
@@ -271,20 +302,21 @@ export default function AdminPage() {
                   {(() => {
                     const title = getUserTitle(searchResult);
                     if (title) {
+                      const colorMap: Record<string, string> = {
+                        "站长": "bg-amber-500/20 text-amber-400",
+                        "副站长": "bg-orange-500/20 text-orange-400",
+                        "管理员": "bg-blue-500/20 text-blue-400",
+                      };
+                      const colorClass = colorMap[title] || "bg-purple-500/20 text-purple-400";
                       return (
-                        <span className={`px-3 py-1 rounded text-xs font-medium ${
-                          title === "站长" ? "bg-amber-500/20 text-amber-400" :
-                          title === "副站长" ? "bg-orange-500/20 text-orange-400" :
-                          title === "管理员" ? "bg-blue-500/20 text-blue-400" :
-                          "bg-purple-500/20 text-purple-400"
-                        }`}>
+                        <span className={`px-3 py-1 rounded text-xs font-medium ${colorClass}`}>
                           {title}
                         </span>
                       );
                     }
                     return (
                       <span className="px-3 py-1 bg-gray-500/20 text-gray-400 rounded text-xs font-medium">
-                        LV{searchResult.level}
+                        LV{getLevelFromExperience(searchResult.experience)}
                       </span>
                     );
                   })()}
@@ -301,73 +333,42 @@ export default function AdminPage() {
                   <div className="text-gray-400 text-xs">添加资源</div>
                 </div>
                 <div className="text-center glass rounded-lg p-2">
-                  <div className="text-lg font-bold text-white">{searchResult.level}</div>
+                  <div className="text-lg font-bold text-white">{getLevelFromExperience(searchResult.experience)}</div>
                   <div className="text-gray-400 text-xs">等级</div>
                 </div>
               </div>
 
               <div className="space-y-3">
-                {/* Role assignment - only for users below current admin level */}
-                {isOwner && (
+                {/* Role assignment - dynamic based on requester permissions */}
+                {assignableTitles.length > 0 && (
                   <div className="flex gap-2 flex-wrap">
-                    {!searchResult.isOwner && (
-                      <>
-                        {!searchResult.isSuperAdmin && searchResult.role !== "ADMIN" && (
-                          <button
-                            onClick={() => handleAssignRole(searchResult.username, "ADMIN")}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-                          >
-                            设为管理员
-                          </button>
-                        )}
-                        {!searchResult.isSuperAdmin && (
-                          <button
-                            onClick={() => handleAssignRole(searchResult.username, "SUPER_ADMIN")}
-                            className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm transition-colors"
-                          >
-                            设为副站长
-                          </button>
-                        )}
-                        {(searchResult.role === "ADMIN" || searchResult.isSuperAdmin) && (
-                          <button
-                            onClick={() => handleAssignRole(searchResult.username, "USER")}
-                            className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm transition-colors"
-                          >
-                            取消权限
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {isSuperAdmin && (
-                  <div className="flex gap-2 flex-wrap">
-                    {!searchResult.isOwner && !searchResult.isSuperAdmin && (
-                      <>
-                        {searchResult.role !== "ADMIN" && (
-                          <button
-                            onClick={() => handleAssignRole(searchResult.username, "ADMIN")}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-                          >
-                            设为管理员
-                          </button>
-                        )}
-                        {searchResult.role === "ADMIN" && (
-                          <button
-                            onClick={() => handleAssignRole(searchResult.username, "USER")}
-                            className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm transition-colors"
-                          >
-                            取消管理员
-                          </button>
-                        )}
-                      </>
-                    )}
+                    {assignableTitles.map((t) => (
+                      <button
+                        key={t.value === null ? "clear" : t.value}
+                        onClick={() => handleAssignTitle(searchResult.username, t.value)}
+                        disabled={
+                          // Don't allow demoting self from owner/superadmin
+                          (searchResult.username === (session?.user as any)?.username &&
+                            (t.value === null || t.value === "管理员"))
+                        }
+                        className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                          t.value === null
+                            ? "bg-gray-600 hover:bg-gray-700 text-white"
+                            : t.value === "站长"
+                            ? "bg-amber-600 hover:bg-amber-700 text-white"
+                            : t.value === "副站长"
+                            ? "bg-orange-600 hover:bg-orange-700 text-white"
+                            : "bg-blue-600 hover:bg-blue-700 text-white"
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
                   </div>
                 )}
 
                 {/* Custom title for non-admin users */}
-                {(isOwner || isSuperAdmin) && !searchResult.isOwner && !searchResult.isSuperAdmin && (
+                {isOwner && !searchResult.isOwner && !searchResult.isSuperAdmin && (
                   <div className="flex gap-2 items-center">
                     <input
                       type="text"
@@ -382,24 +383,6 @@ export default function AdminPage() {
                     >
                       设置头衔
                     </button>
-                    {searchResult.title && (
-                      <button
-                        onClick={async () => {
-                          const res = await fetch(`/api/admin/users/${searchResult.username}`, {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ title: null }),
-                          });
-                          if (res.ok) {
-                            setSearchResult((prev) => prev ? { ...prev, title: null } : null);
-                            setActionMessage("✅ 已清除头衔");
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm transition-colors"
-                      >
-                        清除头衔
-                      </button>
-                    )}
                   </div>
                 )}
               </div>

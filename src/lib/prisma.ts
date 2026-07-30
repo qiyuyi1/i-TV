@@ -12,30 +12,30 @@ const USER_COLUMNS: Record<string, string> = {
   level: "level",
   experience: "experience",
   title: "title",
-  isOwner: "isOwner",
-  isSuperAdmin: "isSuperAdmin",
-  createdAt: "createdAt",
+  isOwner: "is_owner",
+  isSuperAdmin: "is_super_admin",
+  createdAt: "created_at",
 };
 
 const RESOURCE_COLUMNS: Record<string, string> = {
   id: "id",
-  tmdbId: "tmdbId",
+  tmdbId: "tmdb_id",
   title: "title",
-  originalTitle: "originalTitle",
-  posterPath: "posterPath",
-  backdropPath: "backdropPath",
+  originalTitle: "original_title",
+  posterPath: "poster_path",
+  backdropPath: "backdrop_path",
   overview: "overview",
   year: "year",
   type: "type",
   genres: "genres",
   rating: "rating",
-  currentEpisode: "currentEpisode",
-  totalEpisodes: "totalEpisodes",
+  currentEpisode: "current_episode",
+  totalEpisodes: "total_episodes",
   status: "status",
   notes: "notes",
-  createdAt: "createdAt",
-  updatedAt: "updatedAt",
-  createdById: "createdById",
+  createdAt: "created_at",
+  updatedAt: "updated_at",
+  createdById: "created_by_id",
 };
 
 const RESOURCE_LINK_COLUMNS: Record<string, string> = {
@@ -44,18 +44,18 @@ const RESOURCE_LINK_COLUMNS: Record<string, string> = {
   url: "url",
   type: "type",
   quality: "quality",
-  resourceId: "resourceId",
-  addedById: "addedById",
-  createdAt: "createdAt",
+  resourceId: "resource_id",
+  addedById: "added_by_id",
+  createdAt: "created_at",
 };
 
 const COMMENT_COLUMNS: Record<string, string> = {
   id: "id",
   content: "content",
-  userId: "userId",
-  resourceId: "resourceId",
-  isPinned: "isPinned",
-  createdAt: "createdAt",
+  userId: "user_id",
+  resourceId: "resource_id",
+  isPinned: "is_pinned",
+  createdAt: "created_at",
 };
 
 // Reverse mapping for convenience
@@ -261,6 +261,9 @@ function toDbRow(
   for (const [key, value] of Object.entries(data)) {
     const sqlCol = columns[key] || key;
     result[sqlCol] = value;
+    // Also write to the old camelCase column for backward compatibility
+    // (some old columns have NOT NULL constraints)
+    result[key] = value;
   }
   return result;
 }
@@ -272,9 +275,9 @@ async function includeResourcesForUser(userId: string, limit?: number): Promise<
   const supabase = getSupabase();
   let query = supabase
     .from("resources")
-    .select("id, title, type, posterPath, createdAt")
-    .eq("createdById", userId)
-    .order("createdAt", { ascending: false });
+    .select("id, title, type, poster_path, created_at")
+    .eq("created_by_id", userId)
+    .order("created_at", { ascending: false });
 
   if (limit) query = query.limit(limit);
 
@@ -285,8 +288,8 @@ async function includeResourcesForUser(userId: string, limit?: number): Promise<
     id: r.id,
     title: r.title,
     type: r.type,
-    posterPath: r.posterPath,
-    createdAt: r.createdAt,
+    posterPath: r.poster_path,
+    createdAt: r.created_at,
   }));
 }
 
@@ -294,9 +297,9 @@ async function includeLinksForUser(userId: string, limit?: number, includeResour
   const supabase = getSupabase();
   let query = supabase
     .from("resource_links")
-    .select("id, label, url, type, quality, resourceId, addedById, createdAt")
-    .eq("addedById", userId)
-    .order("createdAt", { ascending: false });
+    .select("id, label, url, type, quality, resource_id, added_by_id, created_at")
+    .eq("added_by_id", userId)
+    .order("created_at", { ascending: false });
 
   if (limit) query = query.limit(limit);
 
@@ -309,8 +312,8 @@ async function includeLinksForUser(userId: string, limit?: number, includeResour
     url: r.url,
     type: r.type,
     quality: r.quality,
-    resourceId: r.resourceId,
-    createdAt: r.createdAt,
+    resourceId: r.resource_id,
+    createdAt: r.created_at,
   }));
 
   // If includeResource is requested, fetch resource info for each link
@@ -336,9 +339,9 @@ async function includeCountsForUser(userId: string): Promise<any> {
   const supabase = getSupabase();
 
   const [resourcesRes, commentsRes, linksRes] = await Promise.all([
-    supabase.from("resources").select("*", { count: "exact", head: true }).eq("createdById", userId),
-    supabase.from("comments").select("*", { count: "exact", head: true }).eq("userId", userId),
-    supabase.from("resource_links").select("*", { count: "exact", head: true }).eq("addedById", userId),
+    supabase.from("resources").select("*", { count: "exact", head: true }).eq("created_by_id", userId),
+    supabase.from("comments").select("*", { count: "exact", head: true }).eq("user_id", userId),
+    supabase.from("resource_links").select("*", { count: "exact", head: true }).eq("added_by_id", userId),
   ]);
 
   return {
@@ -354,9 +357,9 @@ async function includeLinksForResource(resourceId: string): Promise<any[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("resource_links")
-    .select("id, label, url, type, quality, resourceId, addedById, createdAt")
-    .eq("resourceId", resourceId)
-    .order("createdAt", { ascending: true });
+    .select("id, label, url, type, quality, resource_id, added_by_id, created_at")
+    .eq("resource_id", resourceId)
+    .order("created_at", { ascending: true });
 
   if (error) throw error;
 
@@ -366,9 +369,9 @@ async function includeLinksForResource(resourceId: string): Promise<any[]> {
     url: r.url,
     type: r.type,
     quality: r.quality,
-    resourceId: r.resourceId,
-    createdAt: r.createdAt,
-    addedById: r.addedById,
+    resourceId: r.resource_id,
+    createdAt: r.created_at,
+    addedById: r.added_by_id,
   }));
 
   // Fetch addedBy user info for each link
@@ -406,7 +409,7 @@ async function includeUserForComment(userId: string): Promise<any | null> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("users")
-    .select("id, username, level, experience, title, role, isOwner, isSuperAdmin")
+    .select("id, username, level, experience, title, role, is_owner, is_super_admin")
     .eq("id", userId)
     .single();
 
@@ -418,8 +421,8 @@ async function includeUserForComment(userId: string): Promise<any | null> {
     experience: data.experience,
     title: data.title,
     role: data.role,
-    isOwner: data.isOwner,
-    isSuperAdmin: data.isSuperAdmin,
+    isOwner: data.is_owner,
+    isSuperAdmin: data.is_super_admin,
   };
 }
 

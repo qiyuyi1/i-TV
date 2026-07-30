@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getUserTitle, canAssignTitle } from "@/lib/constants";
 
 export async function PATCH(
   request: Request,
@@ -40,6 +41,7 @@ export async function PATCH(
     }
 
     const updateData: any = {};
+    const requesterInfo = { role: requesterRole, isOwner, isSuperAdmin };
 
     // Handle assignRole (new system)
     if (assignRole) {
@@ -66,15 +68,16 @@ export async function PATCH(
         updateData.role = "ADMIN";
         updateData.title = "副站长";
       } else if (assignRole === "ADMIN") {
-        if (isOwner || isSuperAdmin) {
-          updateData.isOwner = false;
-          updateData.isSuperAdmin = false;
-          updateData.role = "ADMIN";
-          updateData.title = null;
-        } else if (requesterRole === "ADMIN" && isOwner === undefined) {
-          // Legacy admin promoting (shouldn't happen often now)
-          updateData.role = "ADMIN";
+        if (!canAssignTitle(requesterInfo, "管理员")) {
+          return NextResponse.json(
+            { error: "权限不足" },
+            { status: 403 }
+          );
         }
+        updateData.isOwner = false;
+        updateData.isSuperAdmin = false;
+        updateData.role = "ADMIN";
+        updateData.title = "管理员";
       } else if (assignRole === "USER") {
         updateData.isOwner = false;
         updateData.isSuperAdmin = false;
@@ -96,13 +99,59 @@ export async function PATCH(
         updateData.title = null;
       }
     } else if (newTitle !== undefined) {
-      if (!isOwner && !isSuperAdmin) {
-        return NextResponse.json(
-          { error: "权限不足" },
-          { status: 403 }
-        );
+      // Handle custom title assignment
+      if (newTitle === null) {
+        // Clearing title
+        if (!isOwner && !isSuperAdmin) {
+          return NextResponse.json(
+            { error: "权限不足" },
+            { status: 403 }
+          );
+        }
+        updateData.title = null;
+      } else {
+        // Setting a specific title
+        // Check if the assigner has permission to assign this title
+        if (!canAssignTitle(requesterInfo, newTitle)) {
+          return NextResponse.json(
+            { error: `权限不足，无法分配"${newTitle}"头衔` },
+            { status: 403 }
+          );
+        }
+        updateData.title = newTitle;
+
+        // If setting a special title, also set the corresponding flags
+        if (newTitle === "站长") {
+          if (!isOwner) {
+            return NextResponse.json(
+              { error: "仅站长可设置站长头衔" },
+              { status: 403 }
+            );
+          }
+          updateData.isOwner = true;
+          updateData.isSuperAdmin = false;
+          updateData.role = "ADMIN";
+        } else if (newTitle === "副站长") {
+          if (!isOwner) {
+            return NextResponse.json(
+              { error: "仅站长可设置副站长头衔" },
+              { status: 403 }
+            );
+          }
+          updateData.isSuperAdmin = true;
+          updateData.isOwner = false;
+          updateData.role = "ADMIN";
+        } else if (newTitle === "管理员") {
+          updateData.isOwner = false;
+          updateData.isSuperAdmin = false;
+          updateData.role = "ADMIN";
+        } else {
+          // Custom title - just set it
+          updateData.isOwner = false;
+          updateData.isSuperAdmin = false;
+          // Keep role as is unless user is already an admin
+        }
       }
-      updateData.title = newTitle || null;
     }
 
     const updatedUser = await prisma.user.update({
@@ -115,6 +164,8 @@ export async function PATCH(
         isOwner: true,
         isSuperAdmin: true,
         title: true,
+        level: true,
+        experience: true,
       },
     });
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { getUserTitle, getLevelFromExperience, hasAdminPermission } from "@/lib/constants";
+import { getUserTitle, getLevelFromExperience, getAssignableTitles } from "@/lib/constants";
 import { getImageUrl } from "@/lib/image";
 
 interface UserProfile {
@@ -31,6 +31,42 @@ interface UserProfile {
     resource: { id: string; title: string };
   }>;
   _count: { comments: number; resources: number };
+}
+
+function TitleBadge({ title, level }: { title: string; level: number }) {
+  if (title === "站长") {
+    return (
+      <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
+        {title}
+      </span>
+    );
+  }
+  if (title === "副站长") {
+    return (
+      <span className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-full text-sm font-medium border border-orange-500/30">
+        {title}
+      </span>
+    );
+  }
+  if (title === "管理员") {
+    return (
+      <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm font-medium border border-blue-500/30">
+        {title}
+      </span>
+    );
+  }
+  if (title) {
+    return (
+      <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm font-medium border border-purple-500/30">
+        {title}
+      </span>
+    );
+  }
+  return (
+    <span className="px-3 py-1 bg-gray-500/20 text-gray-400 rounded-full text-sm font-medium">
+      {"LV"}{level}
+    </span>
+  );
 }
 
 export default function UserProfilePage() {
@@ -92,12 +128,50 @@ export default function UserProfilePage() {
   const canEditUser = isOwner || (isSuperAdmin && !user.isOwner && !user.isSuperAdmin);
   const isSpecialUser = user.isOwner || user.isSuperAdmin || user.role === "ADMIN";
 
-  const getTitleDisplay = () => {
-    if (title === "站长") return <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">{title}</span>;
-    if (title === "副站长") return <span className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-full text-sm font-medium border border-orange-500/30">{title}</span>;
-    if (title === "管理员") return <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm font-medium border border-blue-500/30">{title}</span>;
-    if (title) return <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm font-medium border border-purple-500/30">{title}</span>;
-    return <span className="px-3 py-1 bg-gray-500/20 text-gray-400 rounded-full text-sm font-medium">LV{level}</span>;
+  const requesterInfo = {
+    role: (session?.user as any)?.role,
+    isOwner: (session?.user as any)?.isOwner,
+    isSuperAdmin: (session?.user as any)?.isSuperAdmin,
+  };
+
+  const assignableTitles = getAssignableTitles(requesterInfo);
+
+  const handleAssignTitle = async (titleValue: string | null) => {
+    try {
+      const res = await fetch(`/api/admin/users/${user.username}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: titleValue }),
+      });
+      if (res.ok) fetchUser();
+    } catch (err) {
+      console.error("Assign title error:", err);
+    }
+  };
+
+  const renderPoster = (posterPath: string | null, title: string) => {
+    if (!posterPath) {
+      return (
+        <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+          <span className="text-4xl">🎬</span>
+        </div>
+      );
+    }
+    const imgUrl = getImageUrl(posterPath, "w342");
+    if (!imgUrl) {
+      return (
+        <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+          <span className="text-4xl">🎬</span>
+        </div>
+      );
+    }
+    return (
+      <img
+        src={imgUrl}
+        alt={title}
+        className="w-full h-full object-cover"
+      />
+    );
   };
 
   return (
@@ -111,7 +185,7 @@ export default function UserProfilePage() {
             <div>
               <h1 className="text-2xl font-bold text-white">{user.username}</h1>
               <div className="flex items-center gap-2 mt-2">
-                {getTitleDisplay()}
+                <TitleBadge title={title} level={level} />
               </div>
             </div>
           </div>
@@ -119,7 +193,7 @@ export default function UserProfilePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {!isSpecialUser && (
               <div className="text-center glass rounded-xl p-3">
-                <div className="text-2xl font-bold text-white">LV{level}</div>
+                <div className="text-2xl font-bold text-white">{"LV"}{level}</div>
                 <div className="text-gray-400 text-xs">等级</div>
               </div>
             )}
@@ -137,45 +211,25 @@ export default function UserProfilePage() {
             </div>
           </div>
 
-          {canEditUser && user.username !== (session?.user as any)?.username && (
-            <div className="flex gap-2">
-              {isOwner && !user.isOwner && !user.isSuperAdmin && (
-                <select
-                  className="px-3 py-2 glass text-white rounded-lg text-sm"
-                  defaultValue=""
-                  onChange={async (e) => {
-                    if (!e.target.value) return;
-                    const res = await fetch(`/api/admin/users/${user.username}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ assignRole: e.target.value }),
-                    });
-                    if (res.ok) fetchUser();
-                  }}
+          {canEditUser && user.username !== (session?.user as any)?.username && assignableTitles.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              {assignableTitles.map((t) => (
+                <button
+                  key={t.value === null ? "clear" : t.value}
+                  onClick={() => handleAssignTitle(t.value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                    t.value === null
+                      ? "bg-gray-600 hover:bg-gray-700 text-white"
+                      : t.value === "站长"
+                      ? "bg-amber-600 hover:bg-amber-700 text-white"
+                      : t.value === "副站长"
+                      ? "bg-orange-600 hover:bg-orange-700 text-white"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
                 >
-                  <option value="" className="bg-gray-900">分配头衔</option>
-                  <option value="ADMIN" className="bg-gray-900">设为管理员</option>
-                  <option value="SUPER_ADMIN" className="bg-gray-900">设为副站长</option>
-                </select>
-              )}
-              {isSuperAdmin && !user.isOwner && !user.isSuperAdmin && (
-                <select
-                  className="px-3 py-2 glass text-white rounded-lg text-sm"
-                  defaultValue=""
-                  onChange={async (e) => {
-                    if (!e.target.value) return;
-                    const res = await fetch(`/api/admin/users/${user.username}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ assignRole: e.target.value }),
-                    });
-                    if (res.ok) fetchUser();
-                  }}
-                >
-                  <option value="" className="bg-gray-900">分配头衔</option>
-                  <option value="ADMIN" className="bg-gray-900">设为管理员</option>
-                </select>
-              )}
+                  {t.label}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -191,17 +245,7 @@ export default function UserProfilePage() {
                   className="glass glass-hover rounded-xl overflow-hidden block"
                 >
                   <div className="aspect-[2/3]">
-                    {resource.posterPath ? (
-                      <img
-                        src={getImageUrl(resource.posterPath, "w342")}
-                        alt={resource.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                        <span className="text-4xl">🎬</span>
-                      </div>
-                    )}
+                    {renderPoster(resource.posterPath, resource.title)}
                   </div>
                   <div className="p-2">
                     <div className="text-white text-sm truncate">{resource.title}</div>
