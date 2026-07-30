@@ -37,23 +37,23 @@ const COUNTRY_OPTIONS = [
 
 const YEAR_OPTIONS = [
   { value: "all", label: "全部年份" },
-  { value: "2020-2030", label: "2020-2030" },
-  { value: "2010-2020", label: "2010-2020" },
-  { value: "2000-2010", label: "2000-2010" },
-  { value: "1990-2000", label: "1990-2000" },
-  { value: "1980-1990", label: "1980-1990" },
-  { value: "1970-1980", label: "1970-1980" },
-  { value: "1970以前", label: "1970以前" },
+  { value: "2020-2030", label: "2020-2030年" },
+  { value: "2010-2020", label: "2010-2020年" },
+  { value: "2000-2010", label: "2000-2010年" },
+  { value: "1990-2000", label: "1990-2000年" },
+  { value: "1980-1990", label: "1980-1990年" },
+  { value: "1970-1980", label: "1970-1980年" },
+  { value: "1970以前", label: "1970年以前" },
 ];
 
 const RATING_OPTIONS = [
   { value: "all", label: "不限" },
-  { value: "9", label: "9.0+" },
-  { value: "8", label: "8.0+" },
-  { value: "7", label: "7.0+" },
-  { value: "6", label: "6.0+" },
-  { value: "5", label: "5.0+" },
-  { value: "0", label: "全部" },
+  { value: "9-10", label: "9-10分" },
+  { value: "8-9", label: "8-9分" },
+  { value: "7-8", label: "7-8分" },
+  { value: "6-7", label: "6-7分" },
+  { value: "5-6", label: "5-6分" },
+  { value: "0-5", label: "5分以下" },
 ];
 
 const SORT_OPTIONS = [
@@ -274,12 +274,12 @@ export default function HomePage() {
 
               {/* Rating Filter */}
               <div>
-                <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">最低评分</label>
+                <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">评分</label>
                 <GlassSelect
                   value={minRating}
                   onChange={setMinRating}
                   options={RATING_OPTIONS}
-                  placeholder="选择评分"
+                  placeholder="选择评分区间"
                 />
               </div>
             </div>

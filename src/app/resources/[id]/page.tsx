@@ -129,20 +129,40 @@ export default function ResourceDetailPage() {
     fetchComments();
   }, [params.id]);
 
-  // Close menu on resize or scroll
+  // Update menu position on scroll or resize (keep it anchored to the trigger)
   useEffect(() => {
     if (!openMenuLinkId) return;
-    const close = () => {
-      setOpenMenuLinkId(null);
-      setMenuPosition(null);
+    const updatePosition = () => {
+      // Find the currently open trigger by re-querying (we don't have ref per link)
+      // Alternative: recalculate using saved trigger id's DOM element
+      const triggers = document.querySelectorAll(
+        "button[title='管理链接']"
+      );
+      const links = resource?.links || [];
+      const triggerIndex = links.findIndex((l) => l.id === openMenuLinkId);
+      const trigger = triggers[triggerIndex] as HTMLElement | null;
+      if (trigger) {
+        const rect = trigger.getBoundingClientRect();
+        const dropdownW = 140;
+        const dropdownH = 84;
+        let left = rect.left;
+        let top = rect.bottom + 4;
+        if (left + dropdownW > window.innerWidth - 8) {
+          left = Math.max(8, window.innerWidth - dropdownW - 8);
+        }
+        if (top + dropdownH > window.innerHeight) {
+          top = rect.top - dropdownH - 4;
+        }
+        setMenuPosition({ top, left });
+      }
     };
-    window.addEventListener("resize", close);
-    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
     return () => {
-      window.removeEventListener("resize", close);
-      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [openMenuLinkId]);
+  }, [openMenuLinkId, resource?.links]);
 
   const fetchResource = async () => {
     try {

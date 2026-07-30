@@ -39,8 +39,16 @@ export async function GET(request: Request) {
       }
     }
 
-    if (minRating) {
-      where.rating = { gte: parseFloat(minRating) };
+    if (minRating && minRating !== "all") {
+      if (minRating.includes("-")) {
+        const [minR, maxR] = minRating.split("-");
+        where.AND = where.AND || [];
+        if (minR) where.AND.push({ rating: { gte: parseFloat(minR) } });
+        if (maxR) where.AND.push({ rating: { lte: parseFloat(maxR) } });
+      } else {
+        // Fallback for old format (single number as min)
+        where.rating = { gte: parseFloat(minRating) };
+      }
     }
 
     if (search) {
