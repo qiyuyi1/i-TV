@@ -290,11 +290,11 @@ async function includeResourcesForUser(userId: string, limit?: number): Promise<
   }));
 }
 
-async function includeLinksForUser(userId: string, limit?: number): Promise<any[]> {
+async function includeLinksForUser(userId: string, limit?: number, includeResource?: boolean): Promise<any[]> {
   const supabase = getSupabase();
   let query = supabase
     .from("resource_links")
-    .select("id, label, url, type, quality, resource_id, created_at")
+    .select("id, label, url, type, quality, resource_id, added_by_id, created_at")
     .eq("added_by_id", userId)
     .order("created_at", { ascending: false });
 
@@ -303,7 +303,7 @@ async function includeLinksForUser(userId: string, limit?: number): Promise<any[
   const { data, error } = await query;
   if (error) throw error;
 
-  return (data || []).map((r: any) => ({
+  const links: any[] = (data || []).map((r: any) => ({
     id: r.id,
     label: r.label,
     url: r.url,
@@ -312,6 +312,24 @@ async function includeLinksForUser(userId: string, limit?: number): Promise<any[
     resourceId: r.resource_id,
     createdAt: r.created_at,
   }));
+
+  // If includeResource is requested, fetch resource info for each link
+  if (includeResource) {
+    for (const link of links) {
+      if (link.resourceId) {
+        const { data: res } = await supabase
+          .from("resources")
+          .select("id, title")
+          .eq("id", link.resourceId)
+          .single();
+        link.resource = res ? { id: res.id, title: res.title } : null;
+      } else {
+        link.resource = null;
+      }
+    }
+  }
+
+  return links;
 }
 
 async function includeCountsForUser(userId: string): Promise<any> {
@@ -450,7 +468,8 @@ class UserModel {
       }
       if (include.links !== undefined) {
         const limit = include.links?.take || undefined;
-        user.links = await includeLinksForUser(user.id, limit);
+        const includeResource = !!include.links?.include?.resource;
+        user.links = await includeLinksForUser(user.id, limit, includeResource);
       }
       if (include._count) {
         Object.assign(user, await includeCountsForUser(user.id));
