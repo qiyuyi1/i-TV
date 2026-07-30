@@ -85,6 +85,8 @@ export async function PATCH(
       originalTitle,
       posterPath,
       backdropPath,
+      country,
+      rating,
     } = body;
 
     const updateData: any = {};
@@ -98,6 +100,8 @@ export async function PATCH(
     if (originalTitle !== undefined) updateData.originalTitle = originalTitle || null;
     if (posterPath !== undefined) updateData.posterPath = posterPath || null;
     if (backdropPath !== undefined) updateData.backdropPath = backdropPath || null;
+    if (country !== undefined) updateData.country = country || null;
+    if (rating !== undefined) updateData.rating = rating ? parseFloat(rating) : null;
 
     const updatedResource = await prisma.resource.update({
       where: { id: params.id },

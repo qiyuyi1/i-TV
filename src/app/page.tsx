@@ -42,6 +42,32 @@ const SORT_OPTIONS = [
   { value: "year", order: "asc", label: "年份从旧到新" },
 ];
 
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+      <circle cx="11" cy="11" r="7" />
+      <path strokeLinecap="round" d="m20 20-3.5-3.5" />
+    </svg>
+  );
+}
+
+function SparkleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" />
+      <path d="M19 14L19.75 16.25L22 17L19.75 17.75L19 20L18.25 17.75L16 17L18.25 16.25L19 14Z" opacity="0.7" />
+    </svg>
+  );
+}
+
+function FilterIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+    </svg>
+  );
+}
+
 export default function HomePage() {
   const { data: session } = useSession();
   const [resources, setResources] = useState<Resource[]>([]);
@@ -107,28 +133,29 @@ export default function HomePage() {
     <div className="pt-20 pb-16 min-h-screen relative">
       {/* Decorative gradient orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-pink-600/10 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: "2s" }} />
+        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-pink-600/8 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: "1s" }} />
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Hero Section */}
-        <div className="mb-10">
-          <div className="glass rounded-3xl p-6 md:p-10 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5" />
+        <div className="mb-8">
+          <div className="liquid-glass rounded-3xl p-6 md:p-10 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/3 via-transparent to-purple-500/3" />
             <div className="relative z-10">
               <div className="flex items-start justify-between">
                 <div>
-                  <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">
+                  <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 tracking-tight">
                     i帅TV
                   </h1>
-                  <p className="text-gray-300 text-lg">
-                    ✨ 超级无敌强大的资源站
+                  <p className="text-gray-300 text-lg flex items-center gap-2">
+                    <SparkleIcon className="w-5 h-5 text-blue-400" />
+                    超级无敌强大的资源站
                   </p>
                 </div>
                 <div className="hidden md:flex items-center gap-3">
-                  <div className="glass rounded-xl px-4 py-2 text-center">
+                  <div className="glass-strong rounded-xl px-5 py-2.5 text-center">
                     <div className="text-2xl font-bold text-white">{resources.length}</div>
                     <div className="text-xs text-gray-400">资源</div>
                   </div>
@@ -139,31 +166,30 @@ export default function HomePage() {
         </div>
 
         {/* Search Bar */}
-        <div className="mb-6">
+        <div className="mb-5">
           <div className="glass rounded-2xl p-2 flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
+              <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-500" />
               <input
                 type="text"
-                placeholder="🔍 搜索影片名称..."
+                placeholder="搜索影片名称..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-4 py-3 pl-12 bg-transparent text-white placeholder-gray-500 focus:outline-none"
+                className="w-full px-4 py-3 pl-11 bg-transparent text-white placeholder-gray-500 focus:outline-none text-[15px]"
               />
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`px-4 py-3 rounded-xl transition-all flex items-center gap-2 ${
                 showFilters || hasActiveFilters
-                  ? "bg-blue-600 text-white"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
                   : "glass text-gray-300 hover:text-white"
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              <span>筛选</span>
+              <FilterIcon className="w-4 h-4" />
+              <span className="text-sm">筛选</span>
               {hasActiveFilters && (
-                <span className="ml-1 w-2 h-2 bg-amber-400 rounded-full" />
+                <span className="ml-1 w-1.5 h-1.5 bg-amber-400 rounded-full" />
               )}
             </button>
           </div>
@@ -171,18 +197,18 @@ export default function HomePage() {
 
         {/* Filter Panel */}
         {showFilters && (
-          <div className="glass rounded-2xl p-6 mb-6 space-y-4 animate-in slide-in-from-top-2">
+          <div className="glass rounded-2xl p-6 mb-6 space-y-4">
             {/* Type Filter */}
             <div>
-              <label className="text-gray-300 text-sm mb-2 block">类型</label>
+              <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">类型</label>
               <div className="flex gap-2 flex-wrap">
                 {["all", ...RESOURCE_TYPES.map((t) => t.value)].map((type) => (
                   <button
                     key={type}
                     onClick={() => setFilter(type)}
-                    className={`px-4 py-2 rounded-xl text-sm transition-all ${
+                    className={`px-4 py-1.5 rounded-lg text-sm transition-all ${
                       filter === type
-                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/25"
+                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-500/20"
                         : "bg-white/5 text-gray-300 hover:text-white hover:bg-white/10"
                     }`}
                   >
@@ -194,11 +220,11 @@ export default function HomePage() {
 
             {/* Country Filter */}
             <div>
-              <label className="text-gray-300 text-sm mb-2 block">国家/地区</label>
+              <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">国家/地区</label>
               <select
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                className="w-full sm:w-auto px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="w-full sm:w-auto px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               >
                 {COUNTRY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value} className="bg-gray-900 text-white">
@@ -211,11 +237,11 @@ export default function HomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Year Filter */}
               <div>
-                <label className="text-gray-300 text-sm mb-2 block">年份</label>
+                <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">年份</label>
                 <select
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 >
                   <option value="all" className="bg-gray-900 text-white">全部年份</option>
                   {yearOptions.filter(y => y !== "all").map((y) => (
@@ -226,11 +252,11 @@ export default function HomePage() {
 
               {/* Rating Filter */}
               <div>
-                <label className="text-gray-300 text-sm mb-2 block">最低评分</label>
+                <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">最低评分</label>
                 <select
                   value={minRating}
                   onChange={(e) => setMinRating(e.target.value)}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 >
                   <option value="all" className="bg-gray-900 text-white">不限</option>
                   <option value="9" className="bg-gray-900 text-white">9.0+</option>
@@ -243,7 +269,7 @@ export default function HomePage() {
 
             {/* Sort */}
             <div>
-              <label className="text-gray-300 text-sm mb-2 block">排序方式</label>
+              <label className="text-gray-400 text-xs mb-2 block uppercase tracking-wider">排序方式</label>
               <div className="flex gap-2 flex-wrap">
                 {SORT_OPTIONS.map((opt) => {
                   const isActive = sortBy === opt.value && sortOrder === opt.order;
@@ -268,7 +294,7 @@ export default function HomePage() {
             </div>
 
             {hasActiveFilters && (
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-2">
                 <button
                   onClick={clearFilters}
                   className="px-4 py-2 text-sm text-red-400 hover:text-red-300 transition-colors"
@@ -318,7 +344,9 @@ export default function HomePage() {
           </div>
         ) : filteredResources.length === 0 ? (
           <div className="glass rounded-2xl py-20 text-center">
-            <div className="text-6xl mb-4">🎬</div>
+            <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+            </svg>
             <h3 className="text-xl text-white mb-2">暂无资源</h3>
             <p className="text-gray-400 mb-6">
               {session

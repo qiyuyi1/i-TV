@@ -35,6 +35,7 @@ interface Resource {
   type: string;
   genres: string | null;
   rating: number | null;
+  country: string | null;
   currentEpisode: string | null;
   totalEpisodes: string | null;
   status: string | null;
@@ -89,6 +90,8 @@ export default function ResourceDetailPage() {
     overview: "",
     posterPath: "",
     backdropPath: "",
+    country: "",
+    rating: "",
   });
 
   const [comments, setComments] = useState<Comment[]>([]);
@@ -122,6 +125,8 @@ export default function ResourceDetailPage() {
         overview: data.overview || "",
         posterPath: data.posterPath || "",
         backdropPath: data.backdropPath || "",
+        country: data.country || "",
+        rating: data.rating != null ? String(data.rating) : "",
       });
     } catch (error) {
       console.error("Fetch resource error:", error);
@@ -363,15 +368,15 @@ export default function ResourceDetailPage() {
           </Link>
         </div>
 
-        <div className="glass rounded-2xl relative overflow-hidden">
+        <div className="liquid-glass rounded-2xl relative">
           {backdropUrl && (
             <div 
-              className="absolute inset-0 pointer-events-none"
+              className="absolute inset-0 pointer-events-none overflow-hidden"
               style={{
                 backgroundImage: `url(${backdropUrl})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
-                opacity: 0.15,
+                opacity: 0.22,
               }}
             />
           )}
@@ -390,7 +395,9 @@ export default function ResourceDetailPage() {
               })()}
               {!resource.posterPath && (
                 <div className="w-full aspect-[2/3] bg-gray-800 flex items-center justify-center">
-                  <span className="text-6xl">🎬</span>
+                  <svg className="w-16 h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
                 </div>
               )}
             </div>
@@ -398,7 +405,7 @@ export default function ResourceDetailPage() {
             <div className="flex-1 p-6 md:p-8">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs">
                       {getTypeLabel(resource.type)}
                     </span>
@@ -410,6 +417,11 @@ export default function ResourceDetailPage() {
                     {resource.year && (
                       <span className="text-gray-400 text-sm">
                         {resource.year}
+                      </span>
+                    )}
+                    {resource.country && (
+                      <span className="text-gray-400 text-sm">
+                        · {resource.country}
                       </span>
                     )}
                   </div>
@@ -639,6 +651,48 @@ export default function ResourceDetailPage() {
                   }
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   placeholder="原始标题（可选）"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-2">
+                  国家/地区
+                </label>
+                <select
+                  value={editForm.country}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, country: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                >
+                  <option value="" className="bg-gray-900 text-white">请选择</option>
+                  <option value="中国大陆" className="bg-gray-900 text-white">🇨🇳 中国大陆</option>
+                  <option value="中国香港" className="bg-gray-900 text-white">🇭🇰 中国香港</option>
+                  <option value="中国台湾" className="bg-gray-900 text-white">🇹🇼 中国台湾</option>
+                  <option value="美国" className="bg-gray-900 text-white">🇺🇸 美国</option>
+                  <option value="韩国" className="bg-gray-900 text-white">🇰🇷 韩国</option>
+                  <option value="日本" className="bg-gray-900 text-white">🇯🇵 日本</option>
+                  <option value="英国" className="bg-gray-900 text-white">🇬🇧 英国</option>
+                  <option value="法国" className="bg-gray-900 text-white">🇫🇷 法国</option>
+                  <option value="德国" className="bg-gray-900 text-white">🇩🇪 德国</option>
+                  <option value="泰国" className="bg-gray-900 text-white">🇹🇭 泰国</option>
+                  <option value="其他" className="bg-gray-900 text-white">🌍 其他</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-2">
+                  评分
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value={editForm.rating}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, rating: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="如：8.5"
                 />
               </div>
               <div>
@@ -925,7 +979,9 @@ export default function ResourceDetailPage() {
 
           {comments.length === 0 ? (
             <div className="text-center py-8">
-              <div className="text-3xl mb-2">💬</div>
+              <svg className="w-10 h-10 text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+              </svg>
               <p className="text-gray-400 text-sm">暂无评论，来发表第一条吧</p>
             </div>
           ) : (
