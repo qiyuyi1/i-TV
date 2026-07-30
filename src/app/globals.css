@@ -126,6 +126,85 @@ body {
     66% { transform: translate(-1%, 2%) rotate(-1deg); }
   }
 
+  /* 黑底液态玻璃标签 - 用于类型/集数等标签 */
+  .glass-tag-dark {
+    background: linear-gradient(145deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.45) 100%);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 2px 12px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+      0 1px 0 rgba(255, 255, 255, 0.08) inset;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-tag-dark::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .glass-tag-dark::after {
+    content: "";
+    position: absolute;
+    top: -80%;
+    left: -50%;
+    width: 180%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    animation: tag-shimmer 8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* 黄底液态玻璃标签 - 用于评分标签 */
+  .glass-tag-amber {
+    background: linear-gradient(145deg, rgba(251, 191, 36, 0.7) 0%, rgba(217, 119, 6, 0.55) 100%);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow:
+      0 2px 12px rgba(217, 119, 6, 0.4),
+      0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+      0 1px 0 rgba(255, 255, 255, 0.12) inset;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-tag-amber::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .glass-tag-amber::after {
+    content: "";
+    position: absolute;
+    top: -80%;
+    left: -50%;
+    width: 180%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
+    animation: tag-shimmer 8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes tag-shimmer {
+    0%, 100% { transform: translate(-5%, 0) rotate(0deg); opacity: 0.7; }
+    50% { transform: translate(5%, 3%) rotate(0.5deg); opacity: 1; }
+  }
+
   .poster-gradient {
     background: linear-gradient(
       to top,

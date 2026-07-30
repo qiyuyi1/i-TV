@@ -57,14 +57,14 @@ export default function ResourceCard({ resource }: ResourceCardProps) {
         <div className="absolute inset-0 poster-gradient opacity-60 group-hover:opacity-80 transition-opacity" />
 
         <div className="absolute top-2 left-2 flex gap-1.5">
-          <span className="px-2 py-0.5 glass text-white rounded text-xs sm:text-sm">
+          <span className="px-2 py-0.5 glass-tag-dark text-white rounded text-xs sm:text-sm">
             {typeLabel}
           </span>
         </div>
 
         {resource.rating && (
           <div className="absolute top-2 right-2">
-            <span className="px-2 py-0.5 glass text-white rounded text-xs sm:text-sm font-medium">
+            <span className="px-2 py-0.5 glass-tag-amber text-white rounded text-xs sm:text-sm font-medium">
               ★ {resource.rating.toFixed(1)}
             </span>
           </div>
@@ -73,7 +73,7 @@ export default function ResourceCard({ resource }: ResourceCardProps) {
         {resource.currentEpisode && (
           <div className="absolute top-9 right-2">
             <span
-              className={`px-2 py-0.5 glass rounded text-xs sm:text-sm whitespace-nowrap ${
+              className={`px-2 py-0.5 glass-tag-dark rounded text-xs sm:text-sm whitespace-nowrap ${
                 statusColor[
                   resource.status as keyof typeof statusColor
                 ] || "text-white"
