@@ -7,6 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 DATABASE_URL = "postgresql://postgres:kpeskSvkziU43W2d@db.wxaemtxkrryparukzdrv.supabase.co:5432/postgres?schema=public&sslmode=require"
 NEXTAUTH_SECRET = "ff62135641b6435fffdd9ed83580070b425ee277e352b679bf8048f32e50f9d5"
 NEXTAUTH_URL = "https://i-tv.2268310743.workers.dev"
+SUPABASE_URL = "https://wxaemtxkrryparukzdrv.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY = "YOUR_SUPABASE_SERVICE_ROLE_KEY_HERE"
 
 [assets]
 directory = ".open-next/assets"
