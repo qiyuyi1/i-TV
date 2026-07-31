@@ -192,12 +192,9 @@ export default function ResourceDetailPage() {
   };
 
   const handleDeleteLink = async (linkId: string) => {
-    if (!confirm("确定删除这个链接吗？")) return;
-
     await fetch(`/api/resources/${params.id}/links/${linkId}`, {
       method: "DELETE",
     });
-    setOpenMenuLinkId(null);
     fetchResource();
   };
 
