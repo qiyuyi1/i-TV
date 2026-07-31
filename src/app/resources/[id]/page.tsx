@@ -121,48 +121,11 @@ export default function ResourceDetailPage() {
   const [newComment, setNewComment] = useState("");
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
-  const [openMenuLinkId, setOpenMenuLinkId] = useState<string | null>(null);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     fetchResource();
     fetchComments();
   }, [params.id]);
-
-  // Update menu position on scroll or resize (keep it anchored to the trigger)
-  useEffect(() => {
-    if (!openMenuLinkId) return;
-    const updatePosition = () => {
-      // Find the currently open trigger by re-querying (we don't have ref per link)
-      // Alternative: recalculate using saved trigger id's DOM element
-      const triggers = document.querySelectorAll(
-        "button[title='管理链接']"
-      );
-      const links = resource?.links || [];
-      const triggerIndex = links.findIndex((l) => l.id === openMenuLinkId);
-      const trigger = triggers[triggerIndex] as HTMLElement | null;
-      if (trigger) {
-        const rect = trigger.getBoundingClientRect();
-        const dropdownW = 140;
-        const dropdownH = 84;
-        let left = rect.left;
-        let top = rect.bottom + 4;
-        if (left + dropdownW > window.innerWidth - 8) {
-          left = Math.max(8, window.innerWidth - dropdownW - 8);
-        }
-        if (top + dropdownH > window.innerHeight) {
-          top = rect.top - dropdownH - 4;
-        }
-        setMenuPosition({ top, left });
-      }
-    };
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [openMenuLinkId, resource?.links]);
 
   const fetchResource = async () => {
     try {
@@ -462,25 +425,22 @@ export default function ResourceDetailPage() {
             </div>
 
             <div className="flex-1 p-6 md:p-8">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className="px-2 py-1 glass-tag-dark text-white rounded text-xs">
+                    <span className="px-2 py-1 glass-tag-dark text-white rounded text-xs shrink-0">
                       {getTypeLabel(resource.type)}
                     </span>
                     {resource.rating != null && (
-                      <span className="px-2 py-1 glass-tag-amber text-white rounded text-xs">
+                      <span className="px-2 py-1 glass-tag-amber text-white rounded text-xs shrink-0">
                         ★ {Number(resource.rating).toFixed(1)}
                       </span>
                     )}
-                    {resource.year && (
-                      <span className="text-gray-400 text-sm">
+                    {(resource.year || resource.country) && (
+                      <span className="text-gray-400 text-sm whitespace-nowrap">
                         {resource.year}
-                      </span>
-                    )}
-                    {resource.country && (
-                      <span className="text-gray-400 text-sm">
-                        · {resource.country}
+                        {resource.year && resource.country ? " · " : ""}
+                        {resource.country || ""}
                       </span>
                     )}
                   </div>
@@ -495,18 +455,16 @@ export default function ResourceDetailPage() {
                 </div>
 
                 {canEdit && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleDeleteResource}
-                      className="px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors text-sm flex items-center gap-1.5"
-                      title="删除资源"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                      </svg>
-                      删除
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleDeleteResource}
+                    className="shrink-0 px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors text-sm flex items-center gap-1.5 border border-red-500/20"
+                    title="删除资源"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                    </svg>
+                    删除
+                  </button>
                 )}
               </div>
 
@@ -613,7 +571,7 @@ export default function ResourceDetailPage() {
               {(resource.links || []).length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {(resource.links || []).map((link) => (
-                    <div key={link.id} className="inline-flex items-center">
+                    <div key={link.id} className="inline-flex items-center gap-0.5 group">
                       <a
                         href={link.url}
                         target="_blank"
@@ -627,34 +585,15 @@ export default function ResourceDetailPage() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (openMenuLinkId === link.id) {
-                              setOpenMenuLinkId(null);
-                              setMenuPosition(null);
-                            } else {
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              const dropdownW = 140;
-                              const dropdownH = 84;
-                              let left = rect.left;
-                              let top = rect.bottom + 4;
-                              // Right boundary: clamp to viewport
-                              if (left + dropdownW > window.innerWidth - 8) {
-                                left = Math.max(8, window.innerWidth - dropdownW - 8);
-                              }
-                              // Bottom boundary: flip upward if not enough space
-                              if (top + dropdownH > window.innerHeight) {
-                                top = rect.top - dropdownH - 4;
-                              }
-                              setMenuPosition({ top, left });
-                              setOpenMenuLinkId(link.id);
+                            if (confirm(`确定删除链接「${link.label}」吗？`)) {
+                              handleDeleteLink(link.id);
                             }
                           }}
-                          className="ml-1 text-gray-500 hover:text-red-400 transition-colors"
-                          title="管理链接"
+                          className="ml-0.5 p-1.5 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-60 group-hover:opacity-100"
+                          title="删除链接"
                         >
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <circle cx="4" cy="10" r="1.5" />
-                            <circle cx="10" cy="10" r="1.5" />
-                            <circle cx="16" cy="10" r="1.5" />
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                           </svg>
                         </button>
                       )}
@@ -667,48 +606,6 @@ export default function ResourceDetailPage() {
                 <div className="text-center py-6">
                   <p className="text-gray-400 text-sm">暂无资源链接</p>
                 </div>
-              )}
-
-              {openMenuLinkId && menuPosition && (
-                <div
-                  className="fixed z-[9999] bg-gray-900/95 border border-white/20 rounded-lg py-1 min-w-[140px] shadow-xl backdrop-blur-md"
-                  style={{ top: menuPosition.top, left: menuPosition.left }}
-                >
-                  {(() => {
-                    const activeLink = (resource?.links || []).find(
-                      (l) => l.id === openMenuLinkId
-                    );
-                    if (!activeLink) return null;
-                    return (
-                      <>
-                        <a
-                          href={activeLink.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block px-3 py-1.5 text-sm text-gray-200 hover:text-white hover:bg-white/10"
-                        >
-                          打开链接
-                        </a>
-                        <button
-                          onClick={() => handleDeleteLink(activeLink.id)}
-                          className="block w-full text-left px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/20"
-                        >
-                          删除链接
-                        </button>
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-
-              {openMenuLinkId && (
-                <div
-                  className="fixed inset-0 z-[9998]"
-                  onClick={() => {
-                    setOpenMenuLinkId(null);
-                    setMenuPosition(null);
-                  }}
-                />
               )}
             </div>
           </div>
